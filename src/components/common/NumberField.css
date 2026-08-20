@@ -1,0 +1,45 @@
+.number-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.number-field__label {
+  color: var(--text-secondary);
+  flex: 0 0 auto;
+}
+
+.number-field__input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.number-field input {
+  width: 84px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 3px 6px;
+  text-align: right;
+}
+
+.number-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.number-field__suffix {
+  position: absolute;
+  right: 6px;
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.number-field input {
+  padding-right: 20px;
+}

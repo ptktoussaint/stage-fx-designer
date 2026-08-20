@@ -1,0 +1,113 @@
+.stage-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.03) 1px, transparent 0) 0 0 / 16px 16px,
+    var(--bg-app);
+  touch-action: none;
+}
+
+.stage-canvas__box-select {
+  fill: var(--accent-soft);
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+
+.stage-canvas__zoom-indicator {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 7px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.stage-canvas__pan-hint {
+  position: absolute;
+  left: 78px;
+  bottom: 8px;
+  padding: 3px 7px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.stage-canvas__reset-view {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 4px 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+}
+
+.stage-canvas__reset-view:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.device-node__label {
+  fill: var(--text-secondary);
+  font-size: 9.5px;
+  paint-order: stroke;
+  stroke: var(--bg-app);
+  stroke-width: 3px;
+}
+
+.device-node__pulse {
+  animation: device-pulse 0.5s ease-out;
+}
+
+@keyframes device-pulse {
+  from {
+    opacity: 1;
+    r: 10;
+  }
+  to {
+    opacity: 0;
+    r: 22;
+  }
+}
+
+.distance-overlay__label {
+  fill: var(--text-primary);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.distance-overlay__label--muted {
+  fill: var(--text-secondary);
+  font-family: var(--font-ui);
+}
+
+.stage-renderer-3d-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--bg-app);
+}
+
+.stage-renderer-3d-placeholder__title {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.stage-renderer-3d-placeholder__subtitle {
+  font-size: 11px;
+  max-width: 320px;
+}

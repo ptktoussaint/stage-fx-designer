@@ -1,0 +1,68 @@
+import type { DeviceDefinition } from '../../types';
+
+export const pyroDevices: DeviceDefinition[] = [
+  {
+    id: 'micro-mine',
+    name: 'Micro Mine',
+    category: 'PYRO_SIMULATION',
+    icon: 'pyro',
+    simulationType: 'mine',
+    namePrefix: 'MINE',
+    footprint: { width: 0.2, depth: 0.2 },
+    capabilities: {
+      variableDuration: false,
+      variableIntensity: true,
+      variableAngle: false,
+      maxShots: 1,
+    },
+    defaultParameters: { height: 3, intensity: 0.6 },
+  },
+  {
+    id: 'mine',
+    name: 'Mine',
+    category: 'PYRO_SIMULATION',
+    icon: 'pyro',
+    simulationType: 'mine',
+    namePrefix: 'MINE',
+    footprint: { width: 0.3, depth: 0.3 },
+    capabilities: {
+      variableDuration: false,
+      variableIntensity: true,
+      variableAngle: false,
+      maxShots: 1,
+    },
+    defaultParameters: { height: 6, intensity: 1 },
+  },
+  {
+    id: 'micro-comet',
+    name: 'Micro Comet',
+    category: 'PYRO_SIMULATION',
+    icon: 'pyro',
+    simulationType: 'comet',
+    namePrefix: 'COMET',
+    footprint: { width: 0.2, depth: 0.2 },
+    capabilities: {
+      variableDuration: false,
+      variableIntensity: true,
+      variableAngle: true,
+      maxShots: 1,
+    },
+    defaultParameters: { height: 8, intensity: 0.7, angle: 90 },
+  },
+  {
+    id: 'comet',
+    name: 'Comet',
+    category: 'PYRO_SIMULATION',
+    icon: 'pyro',
+    simulationType: 'comet',
+    namePrefix: 'COMET',
+    footprint: { width: 0.3, depth: 0.3 },
+    capabilities: {
+      variableDuration: false,
+      variableIntensity: true,
+      variableAngle: true,
+      maxShots: 1,
+    },
+    defaultParameters: { height: 15, intensity: 1, angle: 90 },
+  },
+];

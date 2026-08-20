@@ -1,0 +1,21 @@
+.resize-handle {
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 5;
+}
+
+.resize-handle--horizontal {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.resize-handle--vertical {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--accent);
+  opacity: 0.5;
+}
