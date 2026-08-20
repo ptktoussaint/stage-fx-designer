@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useProjectStore } from '../stores/projectStore';
 import { usePlaybackStore } from '../stores/playbackStore';
 import { getDeviceDefinition } from '../devices/registry';
@@ -6,13 +6,23 @@ import { eventBus } from '../engine/eventBus';
 import { addTimelineEvent } from '../commands';
 import { isTypingInField } from '../utils/dom';
 
+/** Minimum time between re-fires of the same held key. Fast enough to read
+ * as "sustained" (roughly 4 fires/sec) but nowhere near the browser's raw
+ * OS key-repeat rate (often 20-30/sec), which is what froze the app. */
+const HOLD_REPEAT_INTERVAL_MS = 250;
+
 /**
  * Live-performance trigger engine: press a bound key, fire the effect(s) on
  * its devices immediately via the same SIMULATION_TRIGGER the Show Engine
  * and Inspector's "Test Trigger" use — so the 2D pulse and 3D effect react
- * with no extra wiring here. While Record is armed AND the transport is
- * actually playing, each fire also writes a TimelineEvent at the current
- * playhead, so performing the show live builds its timeline as a byproduct.
+ * with no extra wiring here. Holding the key keeps firing it at a capped
+ * rate (see HOLD_REPEAT_INTERVAL_MS) rather than either a single one-shot
+ * or the browser's raw, much faster key-repeat rate — sustained effects
+ * (fire held over a phrase, etc.) are meant to work, they just can't spawn
+ * faster than the app can render. While Record is armed AND the transport
+ * is actually playing, each allowed fire also writes a TimelineEvent at
+ * the current playhead, so performing the show live builds its timeline
+ * as a byproduct — a long hold becomes a burst of cues, same as it looked.
  *
  * Mount once near the app root, alongside useKeyboardShortcuts. While a
  * HotkeyCaptureButton is actively listening it uses a capture-phase
@@ -20,20 +30,23 @@ import { isTypingInField } from '../utils/dom';
  * binding never fires accidentally while the user is busy assigning one.
  */
 export function useHotkeyEngine(): void {
+  const lastFireByCode = useRef<Map<string, number>>(new Map());
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      // Holding a key makes the browser resend keydown at OS repeat-rate
-      // (often 20-30/sec) — without this guard, holding one hotkey spawns
-      // dozens of SIMULATION_TRIGGERs a second (each spawning its own 3D
-      // particle batch) and, while recording, dozens of near-duplicate
-      // TimelineEvents. One physical press should fire once.
-      if (e.repeat) return;
       if (isTypingInField(e.target)) return;
 
       const { hotkeys, devices } = useProjectStore.getState().project;
       const binding = hotkeys.find((h) => h.code === e.code);
       if (!binding || binding.deviceIds.length === 0) return;
       e.preventDefault();
+
+      if (e.repeat) {
+        const last = lastFireByCode.current.get(e.code) ?? 0;
+        const now = performance.now();
+        if (now - last < HOLD_REPEAT_INTERVAL_MS) return;
+      }
+      lastFireByCode.current.set(e.code, performance.now());
 
       const playback = usePlaybackStore.getState();
       const shouldRecord = playback.isRecording && playback.isPlaying;
@@ -64,7 +77,15 @@ export function useHotkeyEngine(): void {
       });
     };
 
+    const onKeyUp = (e: KeyboardEvent) => {
+      lastFireByCode.current.delete(e.code);
+    };
+
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
   }, []);
 }
