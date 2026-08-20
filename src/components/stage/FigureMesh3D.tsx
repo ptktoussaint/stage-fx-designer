@@ -1,14 +1,12 @@
 import type { ThreeEvent } from '@react-three/fiber';
-import type { FigureInstance } from '../../types';
+import type { FigureInstance, Vector3 } from '../../types';
 import { getFigureDefinition } from '../../figures/registry';
 import { useSelectionStore } from '../../stores/selectionStore';
 
 interface FigureMesh3DProps {
   figure: FigureInstance;
+  onDragStart: (kind: 'figure', id: string, position: Vector3) => void;
 }
-
-const PERSON_COLOR = '#c98b5e';
-const INSTRUMENT_COLOR = '#8a6b4a';
 
 /** Person markers: a humanoid capsule + head, scaled to the definition's
  * real heightMeters. Instrument markers: simple primitives shaped roughly
@@ -39,14 +37,25 @@ function PersonMarker({ heightMeters, color }: { heightMeters: number; color: st
   );
 }
 
-function InstrumentMarker({ definitionId, heightMeters }: { definitionId: string; heightMeters: number }) {
+/** Instrument body uses `color` (user-customizable, same as everything
+ * else); accent parts (neck, cymbal, keys) stay fixed neutral tones for
+ * readability regardless of the chosen body color. */
+function InstrumentMarker({
+  definitionId,
+  heightMeters,
+  color,
+}: {
+  definitionId: string;
+  heightMeters: number;
+  color: string;
+}) {
   switch (definitionId) {
     case 'figure-guitar':
       return (
         <group>
           <mesh position={[0, heightMeters * 0.3, 0]} rotation={[0, 0, Math.PI / 10]} castShadow>
             <boxGeometry args={[0.32, 0.42, 0.08]} />
-            <meshStandardMaterial color={INSTRUMENT_COLOR} />
+            <meshStandardMaterial color={color} />
           </mesh>
           <mesh position={[0.02, heightMeters * 0.65, 0]} rotation={[0, 0, Math.PI / 10]} castShadow>
             <cylinderGeometry args={[0.02, 0.02, heightMeters * 0.6, 8]} />
@@ -59,15 +68,15 @@ function InstrumentMarker({ definitionId, heightMeters }: { definitionId: string
         <group>
           <mesh position={[0, 0.35, 0]} castShadow>
             <cylinderGeometry args={[0.35, 0.35, 0.5, 16]} />
-            <meshStandardMaterial color={INSTRUMENT_COLOR} />
+            <meshStandardMaterial color={color} />
           </mesh>
           <mesh position={[-0.4, 0.55, -0.2]} castShadow>
             <cylinderGeometry args={[0.18, 0.18, 0.3, 12]} />
-            <meshStandardMaterial color={INSTRUMENT_COLOR} />
+            <meshStandardMaterial color={color} />
           </mesh>
           <mesh position={[0.4, 0.55, -0.2]} castShadow>
             <cylinderGeometry args={[0.18, 0.18, 0.3, 12]} />
-            <meshStandardMaterial color={INSTRUMENT_COLOR} />
+            <meshStandardMaterial color={color} />
           </mesh>
           <mesh position={[0, 0.85, -0.5]} rotation={[Math.PI / 2.5, 0, 0]} castShadow>
             <cylinderGeometry args={[0.22, 0.22, 0.02, 16]} />
@@ -80,7 +89,7 @@ function InstrumentMarker({ definitionId, heightMeters }: { definitionId: string
         <group>
           <mesh position={[0, heightMeters * 0.85, 0]} castShadow>
             <boxGeometry args={[1.2, 0.08, 0.4]} />
-            <meshStandardMaterial color="#1c1c1e" />
+            <meshStandardMaterial color={color} />
           </mesh>
           {[-0.5, 0.5].map((dx) => (
             <mesh key={dx} position={[dx, heightMeters * 0.42, 0]} castShadow>
@@ -99,14 +108,14 @@ function InstrumentMarker({ definitionId, heightMeters }: { definitionId: string
           </mesh>
           <mesh position={[0, heightMeters * 0.95, 0]} castShadow>
             <sphereGeometry args={[0.05, 10, 10]} />
-            <meshStandardMaterial color="#1c1c1e" />
+            <meshStandardMaterial color={color} />
           </mesh>
         </group>
       );
   }
 }
 
-export function FigureMesh3D({ figure }: FigureMesh3DProps) {
+export function FigureMesh3D({ figure, onDragStart }: FigureMesh3DProps) {
   const definition = getFigureDefinition(figure.definitionId);
   const isSelected = useSelectionStore((s) => s.selectedFigureIds.includes(figure.id));
   const selectFigure = useSelectionStore((s) => s.selectFigure);
@@ -114,19 +123,19 @@ export function FigureMesh3D({ figure }: FigureMesh3DProps) {
   if (!definition) return null;
 
   const position: [number, number, number] = [figure.position.x, figure.position.z, figure.position.y];
-  const color = figure.color ?? PERSON_COLOR;
 
-  const handleClick = (e: ThreeEvent<MouseEvent>) => {
+  const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     selectFigure(figure.id);
+    if (!figure.locked) onDragStart('figure', figure.id, figure.position);
   };
 
   return (
-    <group position={position} rotation={[0, (-figure.rotation.z * Math.PI) / 180, 0]} onClick={handleClick}>
+    <group position={position} rotation={[0, (-figure.rotation.z * Math.PI) / 180, 0]} onPointerDown={handlePointerDown}>
       {definition.category === 'INSTRUMENT' ? (
-        <InstrumentMarker definitionId={definition.id} heightMeters={definition.heightMeters} />
+        <InstrumentMarker definitionId={definition.id} heightMeters={definition.heightMeters} color={figure.color} />
       ) : (
-        <PersonMarker heightMeters={definition.heightMeters} color={color} />
+        <PersonMarker heightMeters={definition.heightMeters} color={figure.color} />
       )}
       {isSelected && (
         <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>

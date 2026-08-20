@@ -1,13 +1,23 @@
-import { useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, type ThreeEvent } from '@react-three/fiber';
 import { Grid, OrbitControls } from '@react-three/drei';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { moveDevice, movePlatform, moveFigure } from '../../commands';
+import { snapPosition } from '../../utils/math';
+import type { Vector3 } from '../../types';
 import { DeviceMesh3D } from './DeviceMesh3D';
 import { PlatformMesh3D } from './PlatformMesh3D';
 import { FigureMesh3D } from './FigureMesh3D';
 import { SimulationEffects3D } from './SimulationEffects3D';
 import './StageRenderer2D.css';
+
+interface DragState3D {
+  kind: 'device' | 'platform' | 'figure';
+  id: string;
+  startPosition: Vector3;
+}
 
 /**
  * Real 3D stage view. Reads the exact same Project.devices as the 2D
@@ -24,7 +34,65 @@ export function StageRenderer3D() {
   const platforms = useProjectStore((s) => s.project.platforms);
   const figures = useProjectStore((s) => s.project.figures);
   const stage = useProjectStore((s) => s.project.stage);
+  const snap = useProjectStore((s) => s.project.settings.snap);
   const clearSelection = useSelectionStore((s) => s.clear);
+
+  const [dragState, setDragState] = useState<DragState3D | null>(null);
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  // Whether the current drag actually moved anything, tracked outside React
+  // state (a ref, not a mutated useState value) so every pointer-move
+  // doesn't need to trigger a re-render — the live position update during
+  // drag flows through the project store instead, same split used by the
+  // 2D drag handlers in StageRenderer2D.
+  const movedRef = useRef(false);
+
+  // OrbitControls listens on the canvas's native DOM events directly, so an
+  // object's onPointerDown calling stopPropagation() (r3f's own event
+  // system) does NOT stop it from also starting a camera orbit — they'd
+  // otherwise fight over the same drag gesture. Disable orbiting for the
+  // duration of an object drag instead.
+  useEffect(() => {
+    if (controlsRef.current) controlsRef.current.enabled = !dragState;
+  }, [dragState]);
+
+  const handleDragStart = (kind: DragState3D['kind'], id: string, position: Vector3) => {
+    movedRef.current = false;
+    setDragState({ kind, id, startPosition: position });
+  };
+
+  const handleDragPlanePointerMove = (e: ThreeEvent<PointerEvent>) => {
+    if (!dragState) return;
+    e.stopPropagation();
+    const raw = { x: e.point.x, y: e.point.z, z: dragState.startPosition.z };
+    const store = useProjectStore.getState();
+    const snapped = snapPosition(raw, stage, snap, store.project.devices.map((d) => d.position));
+    if (dragState.kind === 'device') store._updateDevice(dragState.id, { position: snapped });
+    else if (dragState.kind === 'platform') store._updatePlatform(dragState.id, { position: snapped });
+    else store._updateFigure(dragState.id, { position: snapped });
+    movedRef.current = true;
+  };
+
+  useEffect(() => {
+    if (!dragState) return;
+    const onUp = () => {
+      if (movedRef.current) {
+        const store = useProjectStore.getState();
+        if (dragState.kind === 'device') {
+          const final = store.project.devices.find((d) => d.id === dragState.id);
+          if (final) moveDevice(dragState.id, dragState.startPosition, final.position);
+        } else if (dragState.kind === 'platform') {
+          const final = store.project.platforms.find((p) => p.id === dragState.id);
+          if (final) movePlatform(dragState.id, dragState.startPosition, final.position);
+        } else {
+          const final = store.project.figures.find((f) => f.id === dragState.id);
+          if (final) moveFigure(dragState.id, dragState.startPosition, final.position);
+        }
+      }
+      setDragState(null);
+    };
+    window.addEventListener('pointerup', onUp, { once: true });
+    return () => window.removeEventListener('pointerup', onUp);
+  }, [dragState]);
 
   const cameraPosition = useMemo<[number, number, number]>(() => {
     const span = Math.max(stage.width, stage.depth + stage.frontMargin);
@@ -87,20 +155,40 @@ export function StageRenderer3D() {
         />
 
         {platforms.map((platform) => (
-          <PlatformMesh3D key={platform.id} platform={platform} />
+          <PlatformMesh3D key={platform.id} platform={platform} onDragStart={handleDragStart} />
         ))}
 
         {figures.map((figure) => (
-          <FigureMesh3D key={figure.id} figure={figure} />
+          <FigureMesh3D key={figure.id} figure={figure} onDragStart={handleDragStart} />
         ))}
 
         {devices.map((device) => (
-          <DeviceMesh3D key={device.id} device={device} />
+          <DeviceMesh3D key={device.id} device={device} onDragStart={handleDragStart} />
         ))}
 
         <SimulationEffects3D />
 
+        {/* Invisible drag plane: while an object is being dragged, pointer
+            moves raycast against this instead of the visible geometry, and
+            the world-space intersection point becomes the object's new x/y
+            (project space). Only present during a drag so it never steals
+            clicks the rest of the time. Sits 1mm above the dragged object's
+            own elevation — coplanar with the stage deck's top face
+            otherwise, which made raycast hits ambiguous (could resolve to
+            either surface depending on float rounding). */}
+        {dragState && (
+          <mesh
+            position={[stage.width / 2, dragState.startPosition.z + 0.001, stage.depth / 2]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            onPointerMove={handleDragPlanePointerMove}
+          >
+            <planeGeometry args={[2000, 2000]} />
+            <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+          </mesh>
+        )}
+
         <OrbitControls
+          ref={controlsRef}
           target={target}
           minDistance={2}
           maxDistance={Math.max(stage.width, stage.depth + stage.frontMargin) * 3}

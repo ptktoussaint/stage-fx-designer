@@ -14,6 +14,7 @@ import type {
 import { CURRENT_SCHEMA_VERSION, DEFAULT_AUDIO_CONFIG, DEFAULT_PROJECT_SETTINGS } from '../types';
 import { DEFAULT_STAGE_CONFIG } from '../types/stage';
 import { createId } from '../utils/id';
+import { saveProjectToLocal } from '../persistence/autosave';
 
 export function createEmptyProject(name = 'Untitled Show'): Project {
   const now = new Date().toISOString();
@@ -90,7 +91,7 @@ interface ProjectState {
   setAudio: (patch: Partial<AudioConfig>) => void;
 }
 
-export const useProjectStore = create<ProjectState>((set) => ({
+export const useProjectStore = create<ProjectState>((set, get) => ({
   project: createEmptyProject(),
 
   _setProject: (project) => set({ project }),
@@ -329,8 +330,15 @@ export const useProjectStore = create<ProjectState>((set) => ({
   _setProjectName: (name) =>
     set((s) => ({ project: { ...s.project, name, updatedAt: new Date().toISOString() } })),
 
-  setAudio: (patch) =>
+  setAudio: (patch) => {
     set((s) => ({
       project: { ...s.project, audio: { ...s.project.audio, ...patch }, updatedAt: new Date().toISOString() },
-    })),
+    }));
+    // Bypasses the Command Pattern (see the interface doc comment above),
+    // so it also bypasses historyStore's immediate-flush-on-command — flush
+    // here instead. Otherwise removing a track/trimming falls back to the
+    // debounced autosave alone and can lose the change to a fast reload,
+    // same race as the one fixed in historyStore for command-based edits.
+    void saveProjectToLocal(get().project);
+  },
 }));

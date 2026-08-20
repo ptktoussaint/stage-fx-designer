@@ -42,6 +42,12 @@ interface BoxSelectState {
   additive: boolean;
 }
 
+interface PanDragState {
+  startClientX: number;
+  startClientY: number;
+  startPan: { x: number; y: number };
+}
+
 export function StageRenderer2D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const project = useProjectStore((s) => s.project);
@@ -67,6 +73,7 @@ export function StageRenderer2D() {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [sceneryDrag, setSceneryDrag] = useState<SceneryDragState | null>(null);
   const [boxSelect, setBoxSelect] = useState<BoxSelectState | null>(null);
+  const [panDrag, setPanDrag] = useState<PanDragState | null>(null);
   const [triggeredIds, setTriggeredIds] = useState<Set<string>>(new Set());
 
   const pixelsPerMeter = pixelsPerMeterForZoom(zoom);
@@ -277,16 +284,44 @@ export function StageRenderer2D() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sceneryDrag]);
 
+  // --- pan (middle-mouse drag) ---------------------------------------------
+  // Space is already the global play/pause shortcut (useKeyboardShortcuts),
+  // so panning can't reuse the common "hold Space + drag" convention without
+  // colliding with it — middle-mouse-button drag has no such conflict and
+  // is the same gesture most design/DAW tools fall back to regardless.
+
+  useEffect(() => {
+    if (!panDrag) return;
+    const onMove = (e: PointerEvent) => {
+      setPan({
+        x: panDrag.startPan.x + (e.clientX - panDrag.startClientX),
+        y: panDrag.startPan.y + (e.clientY - panDrag.startClientY),
+      });
+    };
+    const onUp = () => setPanDrag(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp, { once: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [panDrag, setPan]);
+
   // --- box select ----------------------------------------------------------
 
   const handleCanvasPointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if (e.button === 1) {
+        e.preventDefault();
+        setPanDrag({ startClientX: e.clientX, startClientY: e.clientY, startPan: pan });
+        return;
+      }
       if (e.button !== 0) return;
       const rect = containerRef.current?.getBoundingClientRect();
       const screen = { x: e.clientX - (rect?.left ?? 0), y: e.clientY - (rect?.top ?? 0) };
       setBoxSelect({ startScreen: screen, currentScreen: screen, additive: e.shiftKey });
     },
-    [],
+    [pan],
   );
 
   useEffect(() => {
@@ -433,11 +468,13 @@ export function StageRenderer2D() {
     <div
       ref={containerRef}
       className="stage-canvas"
+      style={{ cursor: panDrag ? 'grabbing' : undefined }}
       onPointerDown={handleCanvasPointerDown}
       onWheel={handleWheel}
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
       onContextMenu={handleCanvasContextMenu}
+      onAuxClick={(e) => e.preventDefault()}
     >
       <svg width="100%" height="100%">
         {hasFrontMargin && (
@@ -570,7 +607,8 @@ export function StageRenderer2D() {
 
       <div className="stage-canvas__zoom-indicator">{Math.round(zoom * 100)}%</div>
       <div className="stage-canvas__pan-hint">
-        {groups.length > 0 ? `${groups.length} group(s)` : ''}
+        {groups.length > 0 ? `${groups.length} group(s) · ` : ''}
+        Middle-drag to pan
       </div>
       <button
         type="button"

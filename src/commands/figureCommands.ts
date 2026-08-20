@@ -1,6 +1,7 @@
 import type { Command } from './Command';
 import { useProjectStore } from '../stores/projectStore';
 import { useSelectionStore } from '../stores/selectionStore';
+import { DEFAULT_FIGURE_COLOR } from '../types';
 import type { FigureDefinition, FigureInstance, Vector3 } from '../types';
 import { createId, nextInstanceName } from '../utils/id';
 
@@ -17,6 +18,7 @@ export class AddFigureCommand implements Command {
       position,
       rotation: { z: 0 },
       locked: false,
+      color: DEFAULT_FIGURE_COLOR,
     };
     this.label = `Add ${this.figure.name}`;
   }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { getDeviceDefinition } from '../../devices/registry';
+import { CATEGORY_COLOR_HEX } from '../../devices/categoryColors';
 import {
   updateDeviceProperty,
   createGroup,
@@ -60,6 +61,14 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
             onChange={(e) => commit({ enabled: device.enabled }, { enabled: e.target.checked }, 'Toggle Enabled')}
           />
           Enabled
+        </label>
+        <label className="inspector-checkbox">
+          Color
+          <input
+            type="color"
+            value={device.color ?? CATEGORY_COLOR_HEX[definition.category]}
+            onChange={(e) => commit({ color: device.color }, { color: e.target.value }, 'Edit Color')}
+          />
         </label>
         <IconButton icon="duplicate" label="Duplicate" onClick={() => duplicateDevices([device.id])} />
         <IconButton icon="trash" label="Delete" onClick={() => removeDevices([device.id])} />

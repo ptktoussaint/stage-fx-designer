@@ -30,6 +30,14 @@ export function FigurePropertiesPanel({ figure }: { figure: FigureInstance }) {
           active={figure.locked}
           onClick={() => commit({ locked: figure.locked }, { locked: !figure.locked }, 'Toggle Lock')}
         />
+        <label className="inspector-checkbox">
+          Color
+          <input
+            type="color"
+            value={figure.color}
+            onChange={(e) => commit({ color: figure.color }, { color: e.target.value }, 'Edit Color')}
+          />
+        </label>
         <IconButton icon="trash" label="Delete" onClick={() => removeFigures([figure.id])} />
       </div>
 

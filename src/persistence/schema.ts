@@ -1,6 +1,7 @@
 import {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_AUDIO_CONFIG,
+  DEFAULT_FIGURE_COLOR,
   DEFAULT_PROJECT_SETTINGS,
   type Project,
 } from '../types';
@@ -46,7 +47,7 @@ export function migrateProject(raw: unknown): Project | null {
     stage: { ...DEFAULT_STAGE_CONFIG, ...doc.stage },
     devices: doc.devices ?? [],
     platforms: doc.platforms ?? [],
-    figures: doc.figures ?? [],
+    figures: (doc.figures ?? []).map((figure) => ({ ...figure, color: figure.color ?? DEFAULT_FIGURE_COLOR })),
     groups: doc.groups ?? [],
     audio: { ...DEFAULT_AUDIO_CONFIG, ...doc.audio },
     timeline: { events: doc.timeline?.events ?? [] },

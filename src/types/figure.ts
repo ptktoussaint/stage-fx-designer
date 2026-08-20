@@ -29,5 +29,7 @@ export interface FigureInstance {
   position: Vector3;
   rotation: Rotation3;
   locked: boolean;
-  color?: string;
+  color: string;
 }
+
+export const DEFAULT_FIGURE_COLOR = '#c98b5e';

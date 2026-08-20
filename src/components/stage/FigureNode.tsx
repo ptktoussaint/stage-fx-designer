@@ -26,7 +26,7 @@ export const FigureNode = memo(function FigureNode({
   const definition = getFigureDefinition(figure.definitionId);
   if (!definition) return null;
 
-  const color = figure.color ?? 'var(--accent)';
+  const color = figure.color;
   const footprintPx = metersToPixels(Math.max(definition.footprint.width, definition.footprint.depth), pixelsPerMeter);
   const radius = Math.max(8, footprintPx / 2);
 

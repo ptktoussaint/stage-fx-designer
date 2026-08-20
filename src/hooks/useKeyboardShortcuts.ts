@@ -2,11 +2,36 @@ import { useEffect } from 'react';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useProjectStore } from '../stores/projectStore';
 import { usePlaybackStore } from '../stores/playbackStore';
-import { undo, redo, removeDevices, duplicateDevices, createGroup, removePlatforms, removeFigures } from '../commands';
+import {
+  undo,
+  redo,
+  removeDevices,
+  duplicateDevices,
+  createGroup,
+  removePlatforms,
+  removeFigures,
+  moveDevices,
+  movePlatform,
+  moveFigure,
+  removeTimelineEvent,
+  updateTimelineEvent,
+} from '../commands';
 import { saveProjectToLocal } from '../persistence/autosave';
 import { isTypingInField } from '../utils/dom';
+import type { Vector3 } from '../types';
 
 const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4fb8d6'];
+
+/** project.x+ / project.y+ per arrow press. Matches the 2D top-down canvas
+ * (project.y grows "down the screen," toward the back of the stage) and,
+ * since it's a plain world-space offset with no camera math, works exactly
+ * the same regardless of which 3D angle you're looking from. */
+const ARROW_DELTA: Record<string, { dx: number; dy: number }> = {
+  ArrowLeft: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+  ArrowUp: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
+};
 
 /**
  * Copy/paste "clipboard" for devices. A plain module-level array rather
@@ -86,7 +111,74 @@ export function useKeyboardShortcuts(): void {
         } else if (selection.selectedFigureIds.length > 0) {
           e.preventDefault();
           removeFigures(selection.selectedFigureIds);
+        } else if (selection.selectedTimelineEventId) {
+          const event = useProjectStore
+            .getState()
+            .project.timeline.events.find((ev) => ev.id === selection.selectedTimelineEventId);
+          if (event) {
+            e.preventDefault();
+            removeTimelineEvent(event);
+            selection.selectTimelineEvent(null);
+          }
         }
+        return;
+      }
+
+      if (e.key in ARROW_DELTA) {
+        const selection = useSelectionStore.getState();
+        const hasStageSelection =
+          selection.selectedDeviceIds.length > 0 ||
+          selection.selectedPlatformIds.length > 0 ||
+          selection.selectedFigureIds.length > 0;
+
+        if (!hasStageSelection) {
+          // No device/platform/figure selected — a timeline cue might be,
+          // in which case Left/Right nudges its time instead of an x/y
+          // position (cues are 1-D: a time, not a place on the stage).
+          if (selection.selectedTimelineEventId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            const event = useProjectStore
+              .getState()
+              .project.timeline.events.find((ev) => ev.id === selection.selectedTimelineEventId);
+            if (event) {
+              e.preventDefault();
+              const step = e.shiftKey ? 1 : 0.1;
+              const nextTime = Math.max(0, event.time + (e.key === 'ArrowLeft' ? -step : step));
+              updateTimelineEvent(event.id, { time: event.time }, { time: nextTime });
+            }
+          }
+          return;
+        }
+        e.preventDefault();
+
+        const { dx, dy } = ARROW_DELTA[e.key];
+        const project = useProjectStore.getState().project;
+        const step = (e.shiftKey ? 5 : 1) * project.stage.gridSize;
+        const offset = (pos: Vector3): Vector3 => ({
+          x: pos.x + dx * step,
+          y: pos.y + dy * step,
+          z: pos.z,
+        });
+
+        if (selection.selectedDeviceIds.length > 0) {
+          const moves = selection.selectedDeviceIds
+            .map((id) => {
+              const device = project.devices.find((d) => d.id === id);
+              if (!device || device.locked) return null;
+              return { deviceId: id, from: device.position, to: offset(device.position) };
+            })
+            .filter((m): m is { deviceId: string; from: Vector3; to: Vector3 } => m !== null);
+          moveDevices(moves);
+        }
+        selection.selectedPlatformIds.forEach((id) => {
+          const platform = project.platforms.find((p) => p.id === id);
+          if (!platform || platform.locked) return;
+          movePlatform(id, platform.position, offset(platform.position));
+        });
+        selection.selectedFigureIds.forEach((id) => {
+          const figure = project.figures.find((f) => f.id === id);
+          if (!figure || figure.locked) return;
+          moveFigure(id, figure.position, offset(figure.position));
+        });
         return;
       }
 

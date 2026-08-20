@@ -11,6 +11,13 @@ interface SelectionState {
    */
   selectedPlatformIds: string[];
   selectedFigureIds: string[];
+  /** The selected timeline cue (TimelineEvent), if any. Independent of the
+   * stage selection above — kept in this shared store (rather than as local
+   * component state, which is where it lived before) specifically so the
+   * global keyboard shortcut handler can reach it for Delete/arrow-key
+   * support, the same way it already reaches device/platform/figure
+   * selection. */
+  selectedTimelineEventId: string | null;
   /** True while a box-selection drag is in progress on the Stage Editor. */
   isBoxSelecting: boolean;
 
@@ -25,16 +32,23 @@ interface SelectionState {
    * the Inspector shows properties for exactly one kind of thing at a time. */
   selectPlatform: (platformId: string) => void;
   selectFigure: (figureId: string) => void;
+  selectTimelineEvent: (eventId: string | null) => void;
 }
 
 export const useSelectionStore = create<SelectionState>((set, get) => ({
   selectedDeviceIds: [],
   selectedPlatformIds: [],
   selectedFigureIds: [],
+  selectedTimelineEventId: null,
   isBoxSelecting: false,
 
   select: (deviceId) => {
-    set({ selectedDeviceIds: [deviceId], selectedPlatformIds: [], selectedFigureIds: [] });
+    set({
+      selectedDeviceIds: [deviceId],
+      selectedPlatformIds: [],
+      selectedFigureIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [deviceId] });
   },
 
@@ -43,36 +57,73 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
     const next = current.includes(deviceId)
       ? current.filter((id) => id !== deviceId)
       : [...current, deviceId];
-    set({ selectedDeviceIds: next, selectedPlatformIds: [], selectedFigureIds: [] });
+    set({
+      selectedDeviceIds: next,
+      selectedPlatformIds: [],
+      selectedFigureIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: next });
   },
 
   setSelection: (deviceIds) => {
-    set({ selectedDeviceIds: deviceIds, selectedPlatformIds: [], selectedFigureIds: [] });
+    set({
+      selectedDeviceIds: deviceIds,
+      selectedPlatformIds: [],
+      selectedFigureIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds });
   },
 
   addToSelection: (deviceIds) => {
     const current = get().selectedDeviceIds;
     const next = Array.from(new Set([...current, ...deviceIds]));
-    set({ selectedDeviceIds: next, selectedPlatformIds: [], selectedFigureIds: [] });
+    set({
+      selectedDeviceIds: next,
+      selectedPlatformIds: [],
+      selectedFigureIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: next });
   },
 
   clear: () => {
-    set({ selectedDeviceIds: [], selectedPlatformIds: [], selectedFigureIds: [] });
+    set({
+      selectedDeviceIds: [],
+      selectedPlatformIds: [],
+      selectedFigureIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [] });
   },
 
   isSelected: (deviceId) => get().selectedDeviceIds.includes(deviceId),
 
   selectPlatform: (platformId) => {
-    set({ selectedPlatformIds: [platformId], selectedDeviceIds: [], selectedFigureIds: [] });
+    set({
+      selectedPlatformIds: [platformId],
+      selectedDeviceIds: [],
+      selectedFigureIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [] });
   },
 
   selectFigure: (figureId) => {
-    set({ selectedFigureIds: [figureId], selectedDeviceIds: [], selectedPlatformIds: [] });
+    set({
+      selectedFigureIds: [figureId],
+      selectedDeviceIds: [],
+      selectedPlatformIds: [],
+      selectedTimelineEventId: null,
+    });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [] });
   },
+
+  selectTimelineEvent: (eventId) =>
+    set(
+      eventId
+        ? { selectedTimelineEventId: eventId, selectedDeviceIds: [], selectedPlatformIds: [], selectedFigureIds: [] }
+        : { selectedTimelineEventId: null },
+    ),
 }));
