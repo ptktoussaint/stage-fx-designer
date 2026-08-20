@@ -34,7 +34,7 @@ export function TimelinePanel() {
     return (
       <div className="timeline-panel timeline-panel--collapsed">
         <span>TIMELINE</span>
-        <span className="timeline-panel__time">{formatTime(currentTime)}</span>
+        <span className="timeline-panel__time">{formatTime(Math.max(0, currentTime - audio.trimStart))}</span>
         <IconButton icon="chevron-right" label="Expand Timeline" onClick={toggleCollapsed} className="timeline-panel__collapse-toggle" />
       </div>
     );
@@ -57,6 +57,7 @@ export function TimelinePanel() {
             durationSeconds={durationSeconds}
             currentTime={currentTime}
             onScrub={seek}
+            trimStart={audio.trimStart}
           />
           {audio.waveformPeaks && audio.duration != null && (
             <div className="timeline-panel__waveform">
@@ -83,6 +84,8 @@ export function TimelinePanel() {
                 pxPerSecond={PX_PER_SECOND}
                 selectedEventId={selectedEventId}
                 onSelectEvent={setSelectedEventId}
+                trimStart={audio.trimStart}
+                trimEnd={audio.trimEnd}
               />
             ))}
             {devices.map((device) => (
@@ -96,6 +99,8 @@ export function TimelinePanel() {
                 pxPerSecond={PX_PER_SECOND}
                 selectedEventId={selectedEventId}
                 onSelectEvent={setSelectedEventId}
+                trimStart={audio.trimStart}
+                trimEnd={audio.trimEnd}
               />
             ))}
             {devices.length === 0 && groups.length === 0 && (

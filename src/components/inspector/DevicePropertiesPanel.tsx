@@ -26,6 +26,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
   const groups = useProjectStore((s) => s.project.groups);
   const hotkeys = useProjectStore((s) => s.project.hotkeys);
   const currentTime = usePlaybackStore((s) => s.currentTime);
+  const trimStart = useProjectStore((s) => s.project.audio.trimStart);
   const [newGroupName, setNewGroupName] = useState('');
   const deviceHotkeys = hotkeys.filter((h) => h.deviceIds.includes(device.id));
 
@@ -177,7 +178,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
           })
         }
       >
-        Add Cue at {formatTime(currentTime)}
+        Add Cue at {formatTime(Math.max(0, currentTime - trimStart))}
       </button>
 
       <div className="inspector-group-title">Hotkeys (live trigger)</div>

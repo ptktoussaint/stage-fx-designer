@@ -9,6 +9,7 @@ import {
   assignHotkey,
 } from '../../commands';
 import { usePlaybackStore } from '../../stores/playbackStore';
+import { useProjectStore } from '../../stores/projectStore';
 import { IconButton } from '../common/IconButton';
 import { HotkeyCaptureButton } from '../common/HotkeyCaptureButton';
 import { formatTime } from '../../utils/time';
@@ -19,6 +20,7 @@ const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4
 export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }) {
   const ids = devices.map((d) => d.id);
   const currentTime = usePlaybackStore((s) => s.currentTime);
+  const trimStart = useProjectStore((s) => s.project.audio.trimStart);
   const [groupName, setGroupName] = useState('');
 
   return (
@@ -42,7 +44,7 @@ export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }
           )
         }
       >
-        Add Cue for {devices.length} Devices at {formatTime(currentTime)}
+        Add Cue for {devices.length} Devices at {formatTime(Math.max(0, currentTime - trimStart))}
       </button>
 
       <div className="inspector-group-title">Hotkeys (live trigger)</div>

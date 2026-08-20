@@ -216,6 +216,15 @@
   opacity: 1;
 }
 
+.timeline-event--outside-trim {
+  opacity: 0.25;
+  filter: grayscale(0.6);
+}
+
+.timeline-event--outside-trim:hover {
+  opacity: 0.5;
+}
+
 .timeline-event--selected {
   outline: 2px solid var(--text-primary);
   opacity: 1;

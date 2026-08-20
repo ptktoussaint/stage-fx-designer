@@ -28,6 +28,7 @@ export function TopToolbar() {
   const currentTime = usePlaybackStore((s) => s.currentTime);
   const togglePlay = usePlaybackStore((s) => s.togglePlay);
   const stop = usePlaybackStore((s) => s.stop);
+  const trimStart = useProjectStore((s) => s.project.audio.trimStart);
 
   const viewMode = useProjectStore((s) => s.project.settings.viewMode);
   const setSettings = useProjectStore((s) => s._setSettings);
@@ -135,7 +136,7 @@ export function TopToolbar() {
       <div className="top-toolbar__spacer" />
 
       <div className="top-toolbar__group top-toolbar__transport">
-        <span className="top-toolbar__time">{formatTime(currentTime)}</span>
+        <span className="top-toolbar__time">{formatTime(Math.max(0, currentTime - trimStart))}</span>
         <IconButton
           icon={isPlaying ? 'stop' : 'play'}
           label={isPlaying ? 'Stop' : 'Play'}
