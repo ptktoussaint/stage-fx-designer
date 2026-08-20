@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useProjectStore } from '../stores/projectStore';
 import { usePlaybackStore } from '../stores/playbackStore';
-import { undo, redo, removeDevices, duplicateDevices, createGroup } from '../commands';
+import { undo, redo, removeDevices, duplicateDevices, createGroup, removePlatforms, removeFigures } from '../commands';
 import { saveProjectToLocal } from '../persistence/autosave';
 import { isTypingInField } from '../utils/dom';
 
@@ -76,10 +76,16 @@ export function useKeyboardShortcuts(): void {
       }
 
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const selected = useSelectionStore.getState().selectedDeviceIds;
-        if (selected.length > 0) {
+        const selection = useSelectionStore.getState();
+        if (selection.selectedDeviceIds.length > 0) {
           e.preventDefault();
-          removeDevices(selected);
+          removeDevices(selection.selectedDeviceIds);
+        } else if (selection.selectedPlatformIds.length > 0) {
+          e.preventDefault();
+          removePlatforms(selection.selectedPlatformIds);
+        } else if (selection.selectedFigureIds.length > 0) {
+          e.preventDefault();
+          removeFigures(selection.selectedFigureIds);
         }
         return;
       }

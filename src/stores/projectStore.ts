@@ -2,8 +2,10 @@ import { create } from 'zustand';
 import type {
   AudioConfig,
   DeviceInstance,
+  FigureInstance,
   Group,
   HotkeyBinding,
+  PlatformInstance,
   Project,
   ProjectSettings,
   StageConfig,
@@ -23,6 +25,8 @@ export function createEmptyProject(name = 'Untitled Show'): Project {
     updatedAt: now,
     stage: { ...DEFAULT_STAGE_CONFIG },
     devices: [],
+    platforms: [],
+    figures: [],
     groups: [],
     audio: { ...DEFAULT_AUDIO_CONFIG },
     timeline: { events: [] },
@@ -50,6 +54,16 @@ interface ProjectState {
   _removeDevice: (deviceId: string) => void;
   _removeDevices: (deviceIds: string[]) => void;
   _updateDevice: (deviceId: string, patch: Partial<DeviceInstance>) => void;
+
+  _addPlatform: (platform: PlatformInstance) => void;
+  _removePlatform: (platformId: string) => void;
+  _removePlatforms: (platformIds: string[]) => void;
+  _updatePlatform: (platformId: string, patch: Partial<PlatformInstance>) => void;
+
+  _addFigure: (figure: FigureInstance) => void;
+  _removeFigure: (figureId: string) => void;
+  _removeFigures: (figureIds: string[]) => void;
+  _updateFigure: (figureId: string, patch: Partial<FigureInstance>) => void;
 
   _addGroup: (group: Group) => void;
   _removeGroup: (groupId: string) => void;
@@ -143,6 +157,80 @@ export const useProjectStore = create<ProjectState>((set) => ({
       project: {
         ...s.project,
         devices: s.project.devices.map((d) => (d.id === deviceId ? { ...d, ...patch } : d)),
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _addPlatform: (platform) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        platforms: [...s.project.platforms, platform],
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _removePlatform: (platformId) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        platforms: s.project.platforms.filter((p) => p.id !== platformId),
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _removePlatforms: (platformIds) =>
+    set((s) => {
+      const idSet = new Set(platformIds);
+      return {
+        project: {
+          ...s.project,
+          platforms: s.project.platforms.filter((p) => !idSet.has(p.id)),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }),
+
+  _updatePlatform: (platformId, patch) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        platforms: s.project.platforms.map((p) => (p.id === platformId ? { ...p, ...patch } : p)),
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _addFigure: (figure) =>
+    set((s) => ({
+      project: { ...s.project, figures: [...s.project.figures, figure], updatedAt: new Date().toISOString() },
+    })),
+
+  _removeFigure: (figureId) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        figures: s.project.figures.filter((f) => f.id !== figureId),
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _removeFigures: (figureIds) =>
+    set((s) => {
+      const idSet = new Set(figureIds);
+      return {
+        project: {
+          ...s.project,
+          figures: s.project.figures.filter((f) => !idSet.has(f.id)),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }),
+
+  _updateFigure: (figureId, patch) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        figures: s.project.figures.map((f) => (f.id === figureId ? { ...f, ...patch } : f)),
         updatedAt: new Date().toISOString(),
       },
     })),

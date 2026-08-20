@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useUiStore } from '../../stores/uiStore';
-import { moveDevices } from '../../commands';
+import { moveDevices, movePlatform, moveFigure } from '../../commands';
 import { getDeviceDefinition } from '../../devices/registry';
 import { pixelsPerMeterForZoom, pixelsToMeters } from '../../engine/coordinates';
 import { eventBus } from '../../engine/eventBus';
 import { snapPosition } from '../../utils/math';
 import type { Vector3 } from '../../types';
 import { DeviceNode } from './DeviceNode';
+import { PlatformNode } from './PlatformNode';
+import { FigureNode } from './FigureNode';
 import { SelectionBoundingBox } from './SelectionBoundingBox';
 import { DistanceOverlay } from './DistanceOverlay';
 import { DEVICE_DEFINITION_DRAG_TYPE } from '../fxLibrary/FxLibraryPanel';
@@ -24,6 +26,16 @@ interface DragState {
   moved: boolean;
 }
 
+/** Single-item drag for platforms/figures — simpler than device DragState
+ * since neither supports multi-select yet (see selectionStore doc comment). */
+interface SceneryDragState {
+  kind: 'platform' | 'figure';
+  id: string;
+  startMeters: { x: number; y: number };
+  startPosition: Vector3;
+  moved: boolean;
+}
+
 interface BoxSelectState {
   startScreen: { x: number; y: number };
   currentScreen: { x: number; y: number };
@@ -33,14 +45,18 @@ interface BoxSelectState {
 export function StageRenderer2D() {
   const containerRef = useRef<HTMLDivElement>(null);
   const project = useProjectStore((s) => s.project);
-  const { stage, devices, groups, settings } = project;
+  const { stage, devices, platforms, figures, groups, settings } = project;
 
   const selectedIds = useSelectionStore((s) => s.selectedDeviceIds);
+  const selectedPlatformIds = useSelectionStore((s) => s.selectedPlatformIds);
+  const selectedFigureIds = useSelectionStore((s) => s.selectedFigureIds);
   const selectDevice = useSelectionStore((s) => s.select);
   const toggleDevice = useSelectionStore((s) => s.toggle);
   const setSelection = useSelectionStore((s) => s.setSelection);
   const addToSelection = useSelectionStore((s) => s.addToSelection);
   const clearSelection = useSelectionStore((s) => s.clear);
+  const selectPlatform = useSelectionStore((s) => s.selectPlatform);
+  const selectFigure = useSelectionStore((s) => s.selectFigure);
 
   const zoom = useUiStore((s) => s.zoom);
   const pan = useUiStore((s) => s.pan);
@@ -49,6 +65,7 @@ export function StageRenderer2D() {
   const openContextMenu = useUiStore((s) => s.openContextMenu);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [sceneryDrag, setSceneryDrag] = useState<SceneryDragState | null>(null);
   const [boxSelect, setBoxSelect] = useState<BoxSelectState | null>(null);
   const [triggeredIds, setTriggeredIds] = useState<Set<string>>(new Set());
 
@@ -180,6 +197,86 @@ export function StageRenderer2D() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dragState]);
 
+  // --- platform / figure drag (single-item; see SceneryDragState) --------
+
+  const handlePlatformPointerDown = useCallback(
+    (e: React.PointerEvent, platformId: string) => {
+      e.stopPropagation();
+      const platform = platforms.find((p) => p.id === platformId);
+      if (!platform || platform.locked) return;
+      selectPlatform(platformId);
+      setSceneryDrag({
+        kind: 'platform',
+        id: platformId,
+        startMeters: screenToMeters(e.clientX, e.clientY),
+        startPosition: platform.position,
+        moved: false,
+      });
+    },
+    [platforms, selectPlatform, screenToMeters],
+  );
+
+  const handleFigurePointerDown = useCallback(
+    (e: React.PointerEvent, figureId: string) => {
+      e.stopPropagation();
+      const figure = figures.find((f) => f.id === figureId);
+      if (!figure || figure.locked) return;
+      selectFigure(figureId);
+      setSceneryDrag({
+        kind: 'figure',
+        id: figureId,
+        startMeters: screenToMeters(e.clientX, e.clientY),
+        startPosition: figure.position,
+        moved: false,
+      });
+    },
+    [figures, selectFigure, screenToMeters],
+  );
+
+  useEffect(() => {
+    if (!sceneryDrag) return;
+
+    const onMove = (e: PointerEvent) => {
+      const current = screenToMeters(e.clientX, e.clientY);
+      const dx = current.x - sceneryDrag.startMeters.x;
+      const dy = current.y - sceneryDrag.startMeters.y;
+      if (Math.abs(dx) < 1e-4 && Math.abs(dy) < 1e-4) return;
+
+      const raw = {
+        x: sceneryDrag.startPosition.x + dx,
+        y: sceneryDrag.startPosition.y + dy,
+        z: sceneryDrag.startPosition.z,
+      };
+      const snapped = snapPosition(raw, stage, settings.snap, devices.map((d) => d.position));
+      const store = useProjectStore.getState();
+      if (sceneryDrag.kind === 'platform') store._updatePlatform(sceneryDrag.id, { position: snapped });
+      else store._updateFigure(sceneryDrag.id, { position: snapped });
+      sceneryDrag.moved = true;
+    };
+
+    const onUp = () => {
+      if (sceneryDrag.moved) {
+        const store = useProjectStore.getState();
+        if (sceneryDrag.kind === 'platform') {
+          const final = store.project.platforms.find((p) => p.id === sceneryDrag.id);
+          if (final) movePlatform(sceneryDrag.id, sceneryDrag.startPosition, final.position);
+        } else {
+          const final = store.project.figures.find((f) => f.id === sceneryDrag.id);
+          if (final) moveFigure(sceneryDrag.id, sceneryDrag.startPosition, final.position);
+        }
+      }
+      setSceneryDrag(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp, { once: true });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sceneryDrag]);
+
   // --- box select ----------------------------------------------------------
 
   const handleCanvasPointerDown = useCallback(
@@ -275,6 +372,24 @@ export function StageRenderer2D() {
     [selectedIds, selectDevice, openContextMenu],
   );
 
+  const handlePlatformContextMenu = useCallback(
+    (e: React.MouseEvent, platformId: string) => {
+      e.preventDefault();
+      selectPlatform(platformId);
+      openContextMenu({ x: e.clientX, y: e.clientY, target: { type: 'platform', platformId } });
+    },
+    [selectPlatform, openContextMenu],
+  );
+
+  const handleFigureContextMenu = useCallback(
+    (e: React.MouseEvent, figureId: string) => {
+      e.preventDefault();
+      selectFigure(figureId);
+      openContextMenu({ x: e.clientX, y: e.clientY, target: { type: 'figure', figureId } });
+    },
+    [selectFigure, openContextMenu],
+  );
+
   const handleCanvasContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
@@ -287,14 +402,16 @@ export function StageRenderer2D() {
 
   const stageOrigin = toScreen({ x: 0, y: 0 });
   const stageBottomRight = toScreen({ x: stage.width, y: stage.depth });
+  const frontOrigin = toScreen({ x: 0, y: -stage.frontMargin });
+  const hasFrontMargin = stage.frontMargin > 0;
 
   const gridLines: { x1: number; y1: number; x2: number; y2: number; major: boolean }[] = [];
   for (let x = 0; x <= stage.width + 1e-6; x += stage.gridSize) {
-    const p1 = toScreen({ x, y: 0 });
+    const p1 = toScreen({ x, y: -stage.frontMargin });
     const p2 = toScreen({ x, y: stage.depth });
     gridLines.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, major: Math.round(x) === x });
   }
-  for (let y = 0; y <= stage.depth + 1e-6; y += stage.gridSize) {
+  for (let y = -stage.frontMargin; y <= stage.depth + 1e-6; y += stage.gridSize) {
     const p1 = toScreen({ x: 0, y });
     const p2 = toScreen({ x: stage.width, y });
     gridLines.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, major: Math.round(y) === y });
@@ -323,6 +440,15 @@ export function StageRenderer2D() {
       onContextMenu={handleCanvasContextMenu}
     >
       <svg width="100%" height="100%">
+        {hasFrontMargin && (
+          <rect
+            x={frontOrigin.x}
+            y={frontOrigin.y}
+            width={stageBottomRight.x - frontOrigin.x}
+            height={stageOrigin.y - frontOrigin.y}
+            fill="var(--stage-front-fill, #16241c)"
+          />
+        )}
         <rect
           x={stageOrigin.x}
           y={stageOrigin.y}
@@ -350,6 +476,58 @@ export function StageRenderer2D() {
           stroke="var(--text-muted)"
           strokeWidth={1.5}
         />
+        {hasFrontMargin && (
+          <>
+            <rect
+              x={frontOrigin.x}
+              y={frontOrigin.y}
+              width={stageBottomRight.x - frontOrigin.x}
+              height={stageOrigin.y - frontOrigin.y}
+              fill="none"
+              stroke="var(--border-subtle)"
+              strokeWidth={1}
+            />
+            <text
+              x={frontOrigin.x + 4}
+              y={frontOrigin.y + 12}
+              className="stage-canvas__zone-label"
+            >
+              FRONT / OFF-STAGE
+            </text>
+          </>
+        )}
+
+        {platforms.map((platform) => {
+          const screen = toScreen(platform.position);
+          return (
+            <PlatformNode
+              key={platform.id}
+              platform={platform}
+              pixelsPerMeter={pixelsPerMeter}
+              screenX={screen.x}
+              screenY={screen.y}
+              isSelected={selectedPlatformIds.includes(platform.id)}
+              onPointerDown={handlePlatformPointerDown}
+              onContextMenu={handlePlatformContextMenu}
+            />
+          );
+        })}
+
+        {figures.map((figure) => {
+          const screen = toScreen(figure.position);
+          return (
+            <FigureNode
+              key={figure.id}
+              figure={figure}
+              pixelsPerMeter={pixelsPerMeter}
+              screenX={screen.x}
+              screenY={screen.y}
+              isSelected={selectedFigureIds.includes(figure.id)}
+              onPointerDown={handleFigurePointerDown}
+              onContextMenu={handleFigureContextMenu}
+            />
+          );
+        })}
 
         {devices.map((device) => {
           const screen = toScreen(device.position);

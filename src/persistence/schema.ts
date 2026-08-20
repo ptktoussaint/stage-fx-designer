@@ -45,6 +45,8 @@ export function migrateProject(raw: unknown): Project | null {
     updatedAt: doc.updatedAt ?? new Date().toISOString(),
     stage: { ...DEFAULT_STAGE_CONFIG, ...doc.stage },
     devices: doc.devices ?? [],
+    platforms: doc.platforms ?? [],
+    figures: doc.figures ?? [],
     groups: doc.groups ?? [],
     audio: { ...DEFAULT_AUDIO_CONFIG, ...doc.audio },
     timeline: { events: doc.timeline?.events ?? [] },

@@ -12,6 +12,22 @@ export function StageSettingsForm() {
       <NumberField label="Width" value={stage.width} step={0.5} min={1} suffix="m" onChange={(width) => setStage({ width })} />
       <NumberField label="Depth" value={stage.depth} step={0.5} min={1} suffix="m" onChange={(depth) => setStage({ depth })} />
       <NumberField
+        label="Stage Height"
+        value={stage.height}
+        step={0.1}
+        min={0}
+        suffix="m"
+        onChange={(height) => setStage({ height })}
+      />
+      <NumberField
+        label="Front Space"
+        value={stage.frontMargin}
+        step={0.5}
+        min={0}
+        suffix="m"
+        onChange={(frontMargin) => setStage({ frontMargin })}
+      />
+      <NumberField
         label="Grid Size"
         value={stage.gridSize}
         step={0.05}

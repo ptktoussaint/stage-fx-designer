@@ -73,4 +73,40 @@
 
 .fx-item__name {
   font-size: 11.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fx-item__dims {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+
+.fx-library__tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+  flex: 0 0 auto;
+}
+
+.fx-library__tab {
+  flex: 1;
+  padding: 7px 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fx-library__tab:hover {
+  color: var(--text-secondary);
+}
+
+.fx-library__tab.is-active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
 }

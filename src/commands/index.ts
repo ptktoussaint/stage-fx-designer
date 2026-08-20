@@ -6,7 +6,17 @@
 import { useHistoryStore } from '../stores/historyStore';
 import { useProjectStore } from '../stores/projectStore';
 import type { Command } from './Command';
-import type { AudioConfig, DeviceDefinition, DeviceInstance, HotkeyBinding, TimelineEvent, Vector3 } from '../types';
+import type {
+  AudioConfig,
+  DeviceDefinition,
+  DeviceInstance,
+  FigureDefinition,
+  FigureInstance,
+  HotkeyBinding,
+  PlatformInstance,
+  TimelineEvent,
+  Vector3,
+} from '../types';
 import {
   AddDeviceCommand,
   DuplicateDevicesCommand,
@@ -24,6 +34,13 @@ import {
   UpdateTimelineEventCommand,
 } from './timelineCommands';
 import { AssignHotkeyCommand, RemoveHotkeyCommand, UpdateHotkeyCommand } from './hotkeyCommands';
+import {
+  AddPlatformCommand,
+  MovePlatformCommand,
+  RemovePlatformsCommand,
+  UpdatePlatformCommand,
+} from './platformCommands';
+import { AddFigureCommand, MoveFigureCommand, RemoveFiguresCommand, UpdateFigureCommand } from './figureCommands';
 import type { Group } from '../types';
 
 const dispatch = (command: Command) => useHistoryStore.getState().execute(command);
@@ -119,6 +136,59 @@ export function removeHotkey(binding: HotkeyBinding): void {
 
 export function updateHotkey(bindingId: string, before: Partial<HotkeyBinding>, after: Partial<HotkeyBinding>): void {
   dispatch(new UpdateHotkeyCommand(bindingId, before, after));
+}
+
+export function addPlatform(
+  name: string,
+  dimensions: PlatformInstance['dimensions'],
+  position: Vector3,
+  color: string,
+): string {
+  const cmd = new AddPlatformCommand(name, dimensions, position, color);
+  dispatch(cmd);
+  return cmd.platform.id;
+}
+
+export function removePlatforms(platformIds: string[]): void {
+  if (platformIds.length === 0) return;
+  dispatch(new RemovePlatformsCommand(platformIds));
+}
+
+export function movePlatform(platformId: string, from: Vector3, to: Vector3): void {
+  dispatch(new MovePlatformCommand(platformId, from, to));
+}
+
+export function updatePlatformProperty(
+  platformId: string,
+  before: Partial<PlatformInstance>,
+  after: Partial<PlatformInstance>,
+  label?: string,
+): void {
+  dispatch(new UpdatePlatformCommand(platformId, before, after, label));
+}
+
+export function addFigure(definition: FigureDefinition, position: Vector3): string {
+  const cmd = new AddFigureCommand(definition, position);
+  dispatch(cmd);
+  return cmd.figure.id;
+}
+
+export function removeFigures(figureIds: string[]): void {
+  if (figureIds.length === 0) return;
+  dispatch(new RemoveFiguresCommand(figureIds));
+}
+
+export function moveFigure(figureId: string, from: Vector3, to: Vector3): void {
+  dispatch(new MoveFigureCommand(figureId, from, to));
+}
+
+export function updateFigureProperty(
+  figureId: string,
+  before: Partial<FigureInstance>,
+  after: Partial<FigureInstance>,
+  label?: string,
+): void {
+  dispatch(new UpdateFigureCommand(figureId, before, after, label));
 }
 
 export function undo(): void {

@@ -41,7 +41,10 @@ export type IconName =
   | 'cue'
   | 'keyboard'
   | 'record'
-  | 'scissors';
+  | 'scissors'
+  | 'dancer'
+  | 'instrument'
+  | 'platform';
 
 const PATHS: Record<IconName, string> = {
   flame: 'M12 2c1 3-3 4-3 7a3 3 0 1 0 6 0c0-1-.5-2-1-2 1 3-1 4-2 4a2 2 0 0 1-2-2c0-2 2-3 2-7Z',
@@ -82,6 +85,9 @@ const PATHS: Record<IconName, string> = {
   keyboard: 'M3 6h18v12H3z M6 10h0 M9 10h0 M12 10h0 M15 10h0 M18 10h0 M6 14h12',
   record: 'M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z',
   scissors: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M8.5 8 20 20 M20 4 8.5 16',
+  dancer: 'M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M12 6v6 M12 12 7 16 M12 12l5 4 M12 12 8 22 M12 12l4 10',
+  instrument: 'M7 3v10a3 3 0 1 0 2 2.8V7h6V3H7Z',
+  platform: 'M3 16h18v5H3z M5 16 8 6h8l3 10',
 };
 
 interface IconProps {

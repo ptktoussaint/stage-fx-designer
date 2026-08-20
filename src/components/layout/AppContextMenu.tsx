@@ -1,7 +1,16 @@
 import { useUiStore } from '../../stores/uiStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSelectionStore } from '../../stores/selectionStore';
-import { duplicateDevices, removeDevices, setDevicesLocked, updateDeviceProperty } from '../../commands';
+import {
+  duplicateDevices,
+  removeDevices,
+  setDevicesLocked,
+  updateDeviceProperty,
+  removePlatforms,
+  updatePlatformProperty,
+  removeFigures,
+  updateFigureProperty,
+} from '../../commands';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
 
 export function AppContextMenu() {
@@ -9,6 +18,8 @@ export function AppContextMenu() {
   const closeContextMenu = useUiStore((s) => s.closeContextMenu);
   const setStageSettingsOpen = useUiStore((s) => s.setStageSettingsOpen);
   const devices = useProjectStore((s) => s.project.devices);
+  const platforms = useProjectStore((s) => s.project.platforms);
+  const figures = useProjectStore((s) => s.project.figures);
   const groups = useProjectStore((s) => s.project.groups);
   const setSelection = useSelectionStore((s) => s.setSelection);
 
@@ -16,7 +27,51 @@ export function AppContextMenu() {
 
   let items: ContextMenuItem[];
 
-  if (contextMenu.target.type === 'device') {
+  if (contextMenu.target.type === 'platform') {
+    const platformId = contextMenu.target.platformId;
+    const found = platforms.find((p) => p.id === platformId);
+    items = found
+      ? [
+          {
+            label: 'Rename',
+            onSelect: () => {
+              const next = window.prompt('Rename platform', found.name);
+              if (next && next.trim()) {
+                updatePlatformProperty(platformId, { name: found.name }, { name: next.trim() }, 'Rename Platform');
+              }
+            },
+          },
+          {
+            label: found.locked ? 'Unlock' : 'Lock',
+            icon: found.locked ? 'unlock' : 'lock',
+            onSelect: () => updatePlatformProperty(platformId, { locked: found.locked }, { locked: !found.locked }, 'Toggle Lock'),
+          },
+          { label: 'Delete', icon: 'trash', danger: true, onSelect: () => removePlatforms([platformId]) },
+        ]
+      : [];
+  } else if (contextMenu.target.type === 'figure') {
+    const figureId = contextMenu.target.figureId;
+    const found = figures.find((f) => f.id === figureId);
+    items = found
+      ? [
+          {
+            label: 'Rename',
+            onSelect: () => {
+              const next = window.prompt('Rename figure', found.name);
+              if (next && next.trim()) {
+                updateFigureProperty(figureId, { name: found.name }, { name: next.trim() }, 'Rename Figure');
+              }
+            },
+          },
+          {
+            label: found.locked ? 'Unlock' : 'Lock',
+            icon: found.locked ? 'unlock' : 'lock',
+            onSelect: () => updateFigureProperty(figureId, { locked: found.locked }, { locked: !found.locked }, 'Toggle Lock'),
+          },
+          { label: 'Delete', icon: 'trash', danger: true, onSelect: () => removeFigures([figureId]) },
+        ]
+      : [];
+  } else if (contextMenu.target.type === 'device') {
     const deviceId = contextMenu.target.deviceId;
     const found = devices.find((d) => d.id === deviceId);
 

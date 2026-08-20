@@ -2,6 +2,8 @@ import type { DeviceInstance } from './instance';
 import type { Group } from './group';
 import type { HotkeyBinding } from './hotkey';
 import type { StageConfig } from './stage';
+import type { PlatformInstance } from './platform';
+import type { FigureInstance } from './figure';
 import type { TimelineData } from './timeline';
 
 export const CURRENT_SCHEMA_VERSION = 1;
@@ -83,6 +85,8 @@ export interface Project {
   updatedAt: string;
   stage: StageConfig;
   devices: DeviceInstance[];
+  platforms: PlatformInstance[];
+  figures: FigureInstance[];
   groups: Group[];
   audio: AudioConfig;
   timeline: TimelineData;

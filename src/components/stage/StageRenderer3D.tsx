@@ -4,6 +4,8 @@ import { Grid, OrbitControls } from '@react-three/drei';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { DeviceMesh3D } from './DeviceMesh3D';
+import { PlatformMesh3D } from './PlatformMesh3D';
+import { FigureMesh3D } from './FigureMesh3D';
 import { SimulationEffects3D } from './SimulationEffects3D';
 import './StageRenderer2D.css';
 
@@ -19,13 +21,15 @@ import './StageRenderer2D.css';
  */
 export function StageRenderer3D() {
   const devices = useProjectStore((s) => s.project.devices);
+  const platforms = useProjectStore((s) => s.project.platforms);
+  const figures = useProjectStore((s) => s.project.figures);
   const stage = useProjectStore((s) => s.project.stage);
   const clearSelection = useSelectionStore((s) => s.clear);
 
   const cameraPosition = useMemo<[number, number, number]>(() => {
-    const span = Math.max(stage.width, stage.depth);
-    return [stage.width / 2, span * 0.75, -span * 0.85];
-  }, [stage.width, stage.depth]);
+    const span = Math.max(stage.width, stage.depth + stage.frontMargin);
+    return [stage.width / 2, span * 0.75 + stage.height, -span * 0.85 - stage.frontMargin * 0.5];
+  }, [stage.width, stage.depth, stage.height, stage.frontMargin]);
 
   const target = useMemo<[number, number, number]>(
     () => [stage.width / 2, 0, stage.depth / 2],
@@ -43,15 +47,31 @@ export function StageRenderer3D() {
         <ambientLight intensity={0.55} />
         <directionalLight position={[stage.width * 0.4, 12, -stage.depth * 0.3]} intensity={0.9} castShadow />
 
+        {/* Stage deck: a real riser box of height stage.height, top face at
+            y=0 so existing device.position.z=0 still means "resting on the
+            stage surface" — device Z stays independent of this box, it's a
+            visual-only elevation. */}
         <mesh
-          position={[stage.width / 2, -0.01, stage.depth / 2]}
-          rotation={[-Math.PI / 2, 0, 0]}
+          position={[stage.width / 2, -stage.height / 2, stage.depth / 2]}
           receiveShadow
+          castShadow
           onClick={() => clearSelection()}
         >
-          <planeGeometry args={[stage.width, stage.depth]} />
+          <boxGeometry args={[stage.width, stage.height, stage.depth]} />
           <meshStandardMaterial color="#141518" />
         </mesh>
+
+        {stage.frontMargin > 0 && (
+          <mesh
+            position={[stage.width / 2, -stage.height, -stage.frontMargin / 2]}
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow
+            onClick={() => clearSelection()}
+          >
+            <planeGeometry args={[stage.width, stage.frontMargin]} />
+            <meshStandardMaterial color="#182620" />
+          </mesh>
+        )}
 
         <Grid
           position={[stage.width / 2, 0, stage.depth / 2]}
@@ -66,6 +86,14 @@ export function StageRenderer3D() {
           infiniteGrid={false}
         />
 
+        {platforms.map((platform) => (
+          <PlatformMesh3D key={platform.id} platform={platform} />
+        ))}
+
+        {figures.map((figure) => (
+          <FigureMesh3D key={figure.id} figure={figure} />
+        ))}
+
         {devices.map((device) => (
           <DeviceMesh3D key={device.id} device={device} />
         ))}
@@ -75,7 +103,7 @@ export function StageRenderer3D() {
         <OrbitControls
           target={target}
           minDistance={2}
-          maxDistance={Math.max(stage.width, stage.depth) * 3}
+          maxDistance={Math.max(stage.width, stage.depth + stage.frontMargin) * 3}
           maxPolarAngle={Math.PI / 2 - 0.02}
         />
       </Canvas>
