@@ -1,55 +1,112 @@
 /**
- * Thin wrapper around a single HTMLAudioElement. Kept as a plain singleton
- * (not React state) for one reason: browsers only allow `audio.play()` to
- * resolve when it's called synchronously inside a real user-gesture handler
- * (a click). Routing play/pause through this engine lets playbackStore call
- * it directly from the Play button's onClick — going through a React effect
- * reacting to state would add a tick of async indirection that some
- * browsers treat as "not a user gesture" and silently block.
+ * Web Audio API playback engine (AudioContext + AudioBufferSourceNode),
+ * not a plain HTMLAudioElement. That swap is deliberate: `<audio>`'s
+ * `currentTime` is driven by the browser's media pipeline and can drift
+ * tens to hundreds of milliseconds from what's actually reaching the
+ * speakers — fine for a video player, not for a tool whose whole point is
+ * firing effects in sync with the music. `AudioContext.currentTime` is the
+ * same clock the audio hardware uses to schedule output, so deriving
+ * playback position from it (see getCurrentTime) is sample-accurate.
+ *
+ * Trade-off: AudioBufferSourceNode has no native pause/resume — each
+ * play() call creates a fresh node. play()/pause()/seek() below track
+ * `startedAtContextTime` + `startOffset` to reconstruct "where we are" at
+ * any moment without needing the node itself to expose it.
  */
 class AudioEngine {
-  private audio: HTMLAudioElement | null = null;
-  private currentUrl: string | null = null;
+  private context: AudioContext | null = null;
+  private buffer: AudioBuffer | null = null;
+  private source: AudioBufferSourceNode | null = null;
+  private startedAtContextTime = 0;
+  private startOffset = 0;
+  private playing = false;
+  private onEnded: (() => void) | null = null;
 
-  load(url: string, onEnded?: () => void): void {
-    if (this.currentUrl && this.currentUrl !== url) {
-      URL.revokeObjectURL(this.currentUrl);
+  private ensureContext(): AudioContext {
+    if (!this.context) {
+      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.context = new Ctor();
     }
-    this.audio = new Audio(url);
-    this.currentUrl = url;
-    if (onEnded) this.audio.addEventListener('ended', onEnded);
+    return this.context;
+  }
+
+  /** Decodes and loads a track for playback. Returns the decoded buffer so callers (waveform import) can derive peaks from it without decoding twice. */
+  async loadFromArrayBuffer(arrayBuffer: ArrayBuffer, onEnded?: () => void): Promise<AudioBuffer> {
+    const ctx = this.ensureContext();
+    this.stopSourceOnly();
+    this.buffer = await ctx.decodeAudioData(arrayBuffer);
+    this.onEnded = onEnded ?? null;
+    this.startOffset = 0;
+    this.playing = false;
+    return this.buffer;
   }
 
   clear(): void {
-    this.audio?.pause();
-    if (this.currentUrl) URL.revokeObjectURL(this.currentUrl);
-    this.audio = null;
-    this.currentUrl = null;
+    this.stopSourceOnly();
+    this.buffer = null;
+    this.playing = false;
+    this.startOffset = 0;
   }
 
-  play(): void {
-    this.audio?.play().catch(() => {
-      // Autoplay was blocked (e.g. no prior user gesture this session) —
-      // playback stays paused; the transport UI reflects isPlaying from
-      // playbackStore regardless, so this fails silently rather than
-      // throwing into a click handler.
-    });
+  play(fromOffset?: number): void {
+    if (!this.buffer) return;
+    const ctx = this.ensureContext();
+    if (ctx.state === 'suspended') void ctx.resume();
+
+    const offset = fromOffset ?? this.startOffset;
+    this.stopSourceOnly();
+
+    const source = ctx.createBufferSource();
+    source.buffer = this.buffer;
+    source.connect(ctx.destination);
+    source.onended = () => {
+      if (this.source !== source) return; // superseded by a later play()/seek(), not a real end
+      this.playing = false;
+      this.onEnded?.();
+    };
+    source.start(0, Math.max(0, offset));
+
+    this.source = source;
+    this.startedAtContextTime = ctx.currentTime;
+    this.startOffset = Math.max(0, offset);
+    this.playing = true;
   }
 
   pause(): void {
-    this.audio?.pause();
+    if (!this.playing) return;
+    this.startOffset = this.getCurrentTime() ?? this.startOffset;
+    this.stopSourceOnly();
+    this.playing = false;
   }
 
   seek(time: number): void {
-    if (this.audio) this.audio.currentTime = time;
+    const clamped = Math.max(0, time);
+    this.startOffset = clamped;
+    if (this.playing) {
+      this.play(clamped);
+    }
+  }
+
+  private stopSourceOnly(): void {
+    if (!this.source) return;
+    this.source.onended = null;
+    try {
+      this.source.stop();
+    } catch {
+      // already stopped/never started — fine
+    }
+    this.source.disconnect();
+    this.source = null;
   }
 
   hasAudio(): boolean {
-    return this.audio !== null;
+    return this.buffer !== null;
   }
 
   getCurrentTime(): number | null {
-    return this.audio ? this.audio.currentTime : null;
+    if (!this.buffer) return null;
+    if (!this.playing || !this.context) return this.startOffset;
+    return this.startOffset + (this.context.currentTime - this.startedAtContextTime);
   }
 }
 

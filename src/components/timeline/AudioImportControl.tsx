@@ -4,7 +4,7 @@ import { setAudio } from '../../commands';
 import { audioEngine } from '../../engine/audioEngine';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { saveAudioBlob, clearAudioBlob } from '../../persistence/audioStorage';
-import { decodeAudioForWaveform } from '../../utils/waveform';
+import { computePeaksFromBuffer } from '../../utils/waveform';
 import { Icon } from '../common/Icon';
 import { IconButton } from '../common/IconButton';
 
@@ -16,11 +16,22 @@ export function AudioImportControl() {
   const handleFile = async (file: File) => {
     setIsDecoding(true);
     try {
-      const { duration, peaks } = await decodeAudioForWaveform(file);
-      const objectUrl = URL.createObjectURL(file);
-      audioEngine.load(objectUrl, () => usePlaybackStore.getState().stop());
+      const arrayBuffer = await file.arrayBuffer();
+      // Decodes once here (Web Audio API buffer used for actual sample-
+      // accurate playback); peaks are derived from that same buffer instead
+      // of decoding the file a second time just for the waveform.
+      const buffer = await audioEngine.loadFromArrayBuffer(arrayBuffer, () => usePlaybackStore.getState().stop());
+      const peaks = computePeaksFromBuffer(buffer);
       await saveAudioBlob(file.name, file);
-      setAudio({ sourceUrl: objectUrl, fileName: file.name, duration, offset: 0, waveformPeaks: peaks });
+      setAudio({
+        sourceUrl: null,
+        fileName: file.name,
+        duration: buffer.duration,
+        offset: 0,
+        waveformPeaks: peaks,
+        trimStart: 0,
+        trimEnd: null,
+      });
     } catch {
       window.alert('Could not read this audio file. Try a standard MP3 or WAV.');
     } finally {
@@ -31,7 +42,15 @@ export function AudioImportControl() {
   const handleRemove = () => {
     audioEngine.clear();
     void clearAudioBlob();
-    setAudio({ sourceUrl: null, fileName: null, duration: null, offset: 0, waveformPeaks: null });
+    setAudio({
+      sourceUrl: null,
+      fileName: null,
+      duration: null,
+      offset: 0,
+      waveformPeaks: null,
+      trimStart: 0,
+      trimEnd: null,
+    });
   };
 
   return (

@@ -31,6 +31,17 @@ const FAMILY_BY_SIMULATION_TYPE: Record<SimulationType, EffectFamily> = {
   streamer: 'confetti',
 };
 
+/**
+ * Hard ceiling on simultaneous effect instances. Each instance owns its own
+ * particle batch (14-30+ meshes with a per-frame useFrame callback), so
+ * without a cap a burst of triggers in a short window — many devices on one
+ * hotkey, a dense stretch of the timeline, anything upstream misbehaving —
+ * degrades into an unrecoverable frame-rate death spiral rather than a
+ * dropped visual. Oldest effect is evicted first, same as it would have
+ * finished and disappeared on its own a moment later.
+ */
+const MAX_CONCURRENT_EFFECTS = 40;
+
 interface ActiveEffect {
   id: string;
   family: EffectFamily;
@@ -57,17 +68,20 @@ export function SimulationEffects3D() {
         const height = typeof parameters.height === 'number' ? parameters.height : 3;
         const color = device.color ?? CATEGORY_COLOR_HEX[definition.category];
 
-        setActive((prev) => [
-          ...prev,
-          {
-            id: createId(),
-            family,
-            position: [device.position.x, device.position.z, device.position.y],
-            color,
-            height,
-            simulationType: simulationType as SimulationType,
-          },
-        ]);
+        setActive((prev) => {
+          const next = [
+            ...prev,
+            {
+              id: createId(),
+              family,
+              position: [device.position.x, device.position.z, device.position.y] as [number, number, number],
+              color,
+              height,
+              simulationType: simulationType as SimulationType,
+            },
+          ];
+          return next.length > MAX_CONCURRENT_EFFECTS ? next.slice(next.length - MAX_CONCURRENT_EFFECTS) : next;
+        });
       }),
     [],
   );

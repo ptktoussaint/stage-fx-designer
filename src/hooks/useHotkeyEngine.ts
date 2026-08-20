@@ -22,6 +22,12 @@ import { isTypingInField } from '../utils/dom';
 export function useHotkeyEngine(): void {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // Holding a key makes the browser resend keydown at OS repeat-rate
+      // (often 20-30/sec) — without this guard, holding one hotkey spawns
+      // dozens of SIMULATION_TRIGGERs a second (each spawning its own 3D
+      // particle batch) and, while recording, dozens of near-duplicate
+      // TimelineEvents. One physical press should fire once.
+      if (e.repeat) return;
       if (isTypingInField(e.target)) return;
 
       const { hotkeys, devices } = useProjectStore.getState().project;

@@ -23,22 +23,23 @@ export function useAutosave(): AutosaveStatus {
         if (cancelled) return;
         if (project) {
           useProjectStore.getState()._setProject(project);
-          // project.audio.sourceUrl (if any) is a blob: URL from a previous
-          // page session and is already dead — the raw bytes live in a
-          // separate IndexedDB entry (see persistence/audioStorage.ts) and
-          // need a fresh object URL each time the app loads.
+          // The raw audio bytes live in a separate IndexedDB entry (see
+          // persistence/audioStorage.ts) — decode them back into the
+          // playback engine's AudioBuffer. waveformPeaks are already in the
+          // project JSON, so no need to recompute them here.
           if (project.audio.fileName) {
             const stored = await loadAudioBlob();
             if (!cancelled && stored) {
-              const freshUrl = URL.createObjectURL(stored.blob);
-              audioEngine.load(freshUrl, () => usePlaybackStore.getState().stop());
-              useProjectStore.getState().setAudio({ sourceUrl: freshUrl });
+              const arrayBuffer = await stored.blob.arrayBuffer();
+              await audioEngine.loadFromArrayBuffer(arrayBuffer, () => usePlaybackStore.getState().stop());
             } else if (!cancelled) {
               useProjectStore.getState().setAudio({
                 sourceUrl: null,
                 fileName: null,
                 duration: null,
                 waveformPeaks: null,
+                trimStart: 0,
+                trimEnd: null,
               });
             }
           }
