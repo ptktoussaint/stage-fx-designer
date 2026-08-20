@@ -106,3 +106,14 @@
   padding: 12px;
   color: var(--text-muted);
 }
+
+.inspector-hotkey-chip {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-strong);
+}

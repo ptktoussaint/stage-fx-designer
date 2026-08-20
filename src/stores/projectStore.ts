@@ -3,6 +3,7 @@ import type {
   AudioConfig,
   DeviceInstance,
   Group,
+  HotkeyBinding,
   Project,
   ProjectSettings,
   StageConfig,
@@ -26,6 +27,7 @@ export function createEmptyProject(name = 'Untitled Show'): Project {
     audio: { ...DEFAULT_AUDIO_CONFIG },
     timeline: { events: [] },
     settings: { ...DEFAULT_PROJECT_SETTINGS, snap: { ...DEFAULT_PROJECT_SETTINGS.snap } },
+    hotkeys: [],
   };
 }
 
@@ -56,6 +58,10 @@ interface ProjectState {
   _addTimelineEvent: (event: TimelineEvent) => void;
   _removeTimelineEvent: (eventId: string) => void;
   _updateTimelineEvent: (eventId: string, patch: Partial<TimelineEvent>) => void;
+
+  _addHotkey: (binding: HotkeyBinding) => void;
+  _removeHotkey: (bindingId: string) => void;
+  _updateHotkey: (bindingId: string, patch: Partial<HotkeyBinding>) => void;
 
   _setStage: (patch: Partial<StageConfig>) => void;
   _setSettings: (patch: Partial<ProjectSettings>) => void;
@@ -101,6 +107,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
             (e) => !(e.targetType === 'device' && e.targetId === deviceId),
           ),
         },
+        hotkeys: s.project.hotkeys
+          .map((h) => ({ ...h, deviceIds: h.deviceIds.filter((id) => id !== deviceId) }))
+          .filter((h) => h.deviceIds.length > 0),
         updatedAt: new Date().toISOString(),
       },
     })),
@@ -121,6 +130,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
               (e) => !(e.targetType === 'device' && idSet.has(e.targetId)),
             ),
           },
+          hotkeys: s.project.hotkeys
+            .map((h) => ({ ...h, deviceIds: h.deviceIds.filter((id) => !idSet.has(id)) }))
+            .filter((h) => h.deviceIds.length > 0),
           updatedAt: new Date().toISOString(),
         },
       };
@@ -187,6 +199,29 @@ export const useProjectStore = create<ProjectState>((set) => ({
         timeline: {
           events: s.project.timeline.events.map((e) => (e.id === eventId ? { ...e, ...patch } : e)),
         },
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _addHotkey: (binding) =>
+    set((s) => ({
+      project: { ...s.project, hotkeys: [...s.project.hotkeys, binding], updatedAt: new Date().toISOString() },
+    })),
+
+  _removeHotkey: (bindingId) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        hotkeys: s.project.hotkeys.filter((h) => h.id !== bindingId),
+        updatedAt: new Date().toISOString(),
+      },
+    })),
+
+  _updateHotkey: (bindingId, patch) =>
+    set((s) => ({
+      project: {
+        ...s.project,
+        hotkeys: s.project.hotkeys.map((h) => (h.id === bindingId ? { ...h, ...patch } : h)),
         updatedAt: new Date().toISOString(),
       },
     })),

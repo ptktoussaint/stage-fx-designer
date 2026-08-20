@@ -1,7 +1,16 @@
 import { useState } from 'react';
-import { alignDevices, createGroup, distributeDevices, removeDevices, setDevicesLocked, addTimelineEvent } from '../../commands';
+import {
+  alignDevices,
+  createGroup,
+  distributeDevices,
+  removeDevices,
+  setDevicesLocked,
+  addTimelineEvent,
+  assignHotkey,
+} from '../../commands';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { IconButton } from '../common/IconButton';
+import { HotkeyCaptureButton } from '../common/HotkeyCaptureButton';
 import { formatTime } from '../../utils/time';
 import type { DeviceInstance } from '../../types';
 
@@ -35,6 +44,14 @@ export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }
       >
         Add Cue for {devices.length} Devices at {formatTime(currentTime)}
       </button>
+
+      <div className="inspector-group-title">Hotkeys (live trigger)</div>
+      <HotkeyCaptureButton
+        label={`Assign Hotkey for ${devices.length} Devices`}
+        onCapture={(code, keyLabel) =>
+          assignHotkey(code, keyLabel, ids, devices.map((d) => d.name).join(' + '))
+        }
+      />
 
       <div className="inspector-group-title">Align</div>
       <div className="inspector-toolgrid">

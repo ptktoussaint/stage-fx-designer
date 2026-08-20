@@ -1,0 +1,36 @@
+.timeline-trim-handles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.timeline-trim-handles__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  margin-left: -4px;
+  background: var(--warning);
+  opacity: 0.85;
+  cursor: ew-resize;
+  pointer-events: auto;
+  z-index: 3;
+}
+
+.timeline-trim-handles__handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  background: var(--bg-app);
+  border-radius: 1px;
+}
+
+.timeline-trim-handles__handle:hover {
+  opacity: 1;
+}

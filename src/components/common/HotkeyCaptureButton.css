@@ -1,0 +1,20 @@
+.hotkey-capture-button {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.hotkey-capture-button:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.hotkey-capture-button--listening {
+  color: var(--warning);
+  border-color: var(--warning);
+  background: rgba(214, 162, 60, 0.12);
+}

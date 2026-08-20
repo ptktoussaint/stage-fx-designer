@@ -37,6 +37,7 @@ interface ActiveEffect {
   position: [number, number, number];
   color: string;
   height: number;
+  simulationType: SimulationType;
 }
 
 export function SimulationEffects3D() {
@@ -64,6 +65,7 @@ export function SimulationEffects3D() {
             position: [device.position.x, device.position.z, device.position.y],
             color,
             height,
+            simulationType: simulationType as SimulationType,
           },
         ]);
       }),
@@ -75,7 +77,14 @@ export function SimulationEffects3D() {
   return (
     <>
       {active.map((effect) => {
-        const props = { id: effect.id, position: effect.position, color: effect.color, height: effect.height, onDone: remove };
+        const props = {
+          id: effect.id,
+          position: effect.position,
+          color: effect.color,
+          height: effect.height,
+          simulationType: effect.simulationType,
+          onDone: remove,
+        };
         switch (effect.family) {
           case 'jet':
             return <EffectJet key={effect.id} {...props} />;

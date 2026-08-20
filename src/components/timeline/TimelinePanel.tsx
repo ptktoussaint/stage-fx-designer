@@ -7,6 +7,7 @@ import { formatTime } from '../../utils/time';
 import { TimelineRuler } from './TimelineRuler';
 import { TimelineTrack } from './TimelineTrack';
 import { TimelineWaveform } from './TimelineWaveform';
+import { TimelineTrimHandles } from './TimelineTrimHandles';
 import { AudioImportControl } from './AudioImportControl';
 import './TimelinePanel.css';
 
@@ -57,9 +58,17 @@ export function TimelinePanel() {
             currentTime={currentTime}
             onScrub={seek}
           />
-          {audio.waveformPeaks && (
+          {audio.waveformPeaks && audio.duration != null && (
             <div className="timeline-panel__waveform">
-              <TimelineWaveform peaks={audio.waveformPeaks} pxPerSecond={PX_PER_SECOND} height={36} />
+              <TimelineWaveform
+                peaks={audio.waveformPeaks}
+                pxPerSecond={PX_PER_SECOND}
+                height={44}
+                currentTime={currentTime}
+                trimStart={audio.trimStart}
+                trimEnd={audio.trimEnd}
+              />
+              <TimelineTrimHandles pxPerSecond={PX_PER_SECOND} height={44} duration={audio.duration} />
             </div>
           )}
           <div className="timeline-panel__tracks">

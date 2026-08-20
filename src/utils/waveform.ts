@@ -1,4 +1,4 @@
-const PEAKS_PER_SECOND = 4;
+export const PEAKS_PER_SECOND = 12;
 
 /**
  * Decodes an audio file into { duration, peaks }. Peaks are downsampled to

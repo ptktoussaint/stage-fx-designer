@@ -87,3 +87,20 @@
   min-width: 92px;
   text-align: center;
 }
+
+.top-toolbar__record-active {
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: #fff !important;
+  animation: record-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes record-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}

@@ -1,5 +1,6 @@
 import type { DeviceInstance } from './instance';
 import type { Group } from './group';
+import type { HotkeyBinding } from './hotkey';
 import type { StageConfig } from './stage';
 import type { TimelineData } from './timeline';
 
@@ -24,6 +25,15 @@ export interface AudioConfig {
    * at import time so the Timeline never has to re-decode the audio file.
    */
   waveformPeaks: number[] | null;
+  /**
+   * Playback window, in seconds from the start of the original file. The
+   * file itself is never re-encoded/sliced — trimming only clamps where
+   * playback starts and where it auto-stops, so it's cheap and always
+   * reversible by dragging the handles back out.
+   */
+  trimStart: number;
+  /** null = trim end not set, i.e. play through to the natural end of the file. */
+  trimEnd: number | null;
 }
 
 export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
@@ -32,6 +42,8 @@ export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
   duration: null,
   offset: 0,
   waveformPeaks: null,
+  trimStart: 0,
+  trimEnd: null,
 };
 
 export interface ProjectSettings {
@@ -75,4 +87,5 @@ export interface Project {
   audio: AudioConfig;
   timeline: TimelineData;
   settings: ProjectSettings;
+  hotkeys: HotkeyBinding[];
 }

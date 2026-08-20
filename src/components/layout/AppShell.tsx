@@ -2,6 +2,7 @@ import '../../engine/simulationEngine'; // registers the ShowEngine -> Simulatio
 import { useAutosave } from '../../hooks/useAutosave';
 import { useShowEngineLoop } from '../../hooks/useShowEngineLoop';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useHotkeyEngine } from '../../hooks/useHotkeyEngine';
 import { TopToolbar } from './TopToolbar';
 import { LeftSidebar } from './LeftSidebar';
 import { CenterWorkspace } from './CenterWorkspace';
@@ -14,6 +15,7 @@ export function AppShell() {
   const autosaveStatus = useAutosave();
   useShowEngineLoop();
   useKeyboardShortcuts();
+  useHotkeyEngine();
 
   if (autosaveStatus === 'loading') {
     return <div className="app-shell app-shell--loading">Loading project…</div>;

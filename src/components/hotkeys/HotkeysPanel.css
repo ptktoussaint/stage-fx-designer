@@ -1,0 +1,66 @@
+.hotkeys-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.hotkeys-panel__empty {
+  color: var(--text-muted);
+  font-size: 11.5px;
+  padding: 8px 0;
+  max-width: 260px;
+}
+
+.hotkeys-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.hotkeys-panel__key {
+  flex: 0 0 auto;
+  min-width: 56px;
+  text-align: center;
+  padding: 3px 6px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--accent-strong);
+}
+
+.hotkeys-panel__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hotkeys-panel__name-input {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 11.5px;
+  padding: 0;
+}
+
+.hotkeys-panel__name-input:focus {
+  outline: none;
+  text-decoration: underline;
+}
+
+.hotkeys-panel__devices {
+  color: var(--text-muted);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

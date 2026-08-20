@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { usePlaybackStore } from '../stores/playbackStore';
+import { useProjectStore } from '../stores/projectStore';
 import { showEngine } from '../engine/showEngine';
 import { audioEngine } from '../engine/audioEngine';
 
@@ -39,6 +40,14 @@ export function useShowEngineLoop(): void {
         nextTime = usePlaybackStore.getState().currentTime + deltaSeconds;
       }
       lastFrameRef.current = timestampMs;
+
+      const { trimEnd } = useProjectStore.getState().project.audio;
+      if (trimEnd != null && nextTime >= trimEnd) {
+        usePlaybackStore.getState().setCurrentTime(trimEnd);
+        showEngine.tick(trimEnd);
+        usePlaybackStore.getState().stop();
+        return;
+      }
 
       usePlaybackStore.getState().setCurrentTime(nextTime);
       showEngine.tick(nextTime);

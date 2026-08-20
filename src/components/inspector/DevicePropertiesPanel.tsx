@@ -9,9 +9,12 @@ import {
   removeDevices,
   duplicateDevices,
   addTimelineEvent,
+  assignHotkey,
+  removeHotkey,
 } from '../../commands';
 import { NumberField } from '../common/NumberField';
 import { IconButton } from '../common/IconButton';
+import { HotkeyCaptureButton } from '../common/HotkeyCaptureButton';
 import { eventBus } from '../../engine/eventBus';
 import { formatTime } from '../../utils/time';
 import type { DeviceInstance } from '../../types';
@@ -21,8 +24,10 @@ const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4
 export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
   const definition = getDeviceDefinition(device.definitionId);
   const groups = useProjectStore((s) => s.project.groups);
+  const hotkeys = useProjectStore((s) => s.project.hotkeys);
   const currentTime = usePlaybackStore((s) => s.currentTime);
   const [newGroupName, setNewGroupName] = useState('');
+  const deviceHotkeys = hotkeys.filter((h) => h.deviceIds.includes(device.id));
 
   if (!definition) return <div className="inspector-empty">Unknown device type.</div>;
 
@@ -174,6 +179,21 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
       >
         Add Cue at {formatTime(currentTime)}
       </button>
+
+      <div className="inspector-group-title">Hotkeys (live trigger)</div>
+      {deviceHotkeys.map((binding) => (
+        <div key={binding.id} className="inspector-section__row inspector-section__row--gap">
+          <span className="inspector-hotkey-chip">{binding.keyLabel}</span>
+          <span className="inspector-subtle" style={{ margin: 0, flex: 1 }}>
+            {binding.name}
+          </span>
+          <IconButton icon="trash" label="Remove Hotkey" onClick={() => removeHotkey(binding)} />
+        </div>
+      ))}
+      <HotkeyCaptureButton
+        label="Assign Hotkey"
+        onCapture={(code, keyLabel) => assignHotkey(code, keyLabel, [device.id], device.name)}
+      />
 
       <div className="inspector-group-title">Groups</div>
       {groups.length === 0 && <div className="inspector-subtle">No groups yet.</div>}

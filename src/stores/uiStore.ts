@@ -21,6 +21,7 @@ interface UiState {
 
   contextMenu: ContextMenuState | null;
   isStageSettingsOpen: boolean;
+  isHotkeysPanelOpen: boolean;
 
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
@@ -32,6 +33,7 @@ interface UiState {
   openContextMenu: (menu: ContextMenuState) => void;
   closeContextMenu: () => void;
   setStageSettingsOpen: (open: boolean) => void;
+  setHotkeysPanelOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -46,6 +48,7 @@ export const useUiStore = create<UiState>((set) => ({
 
   contextMenu: null,
   isStageSettingsOpen: false,
+  isHotkeysPanelOpen: false,
 
   setZoom: (zoom) => set({ zoom: Math.min(4, Math.max(0.1, zoom)) }),
   setPan: (pan) => set({ pan }),
@@ -57,4 +60,5 @@ export const useUiStore = create<UiState>((set) => ({
   openContextMenu: (menu) => set({ contextMenu: menu }),
   closeContextMenu: () => set({ contextMenu: null }),
   setStageSettingsOpen: (isStageSettingsOpen) => set({ isStageSettingsOpen }),
+  setHotkeysPanelOpen: (isHotkeysPanelOpen) => set({ isHotkeysPanelOpen }),
 }));

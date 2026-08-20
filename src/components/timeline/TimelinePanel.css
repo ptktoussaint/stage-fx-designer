@@ -73,14 +73,31 @@
 }
 
 .timeline-panel__waveform {
-  height: 36px;
+  position: relative;
+  height: 44px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-panel-alt);
 }
 
+.timeline-waveform__centerline {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+}
+
 .timeline-waveform__bar {
-  fill: var(--accent);
-  opacity: 0.55;
+  fill: var(--text-muted);
+  opacity: 0.5;
+}
+
+.timeline-waveform__bar--played {
+  fill: var(--accent-strong);
+  opacity: 0.9;
+}
+
+.timeline-waveform__trim-mask {
+  fill: var(--bg-app);
+  opacity: 0.75;
+  pointer-events: none;
 }
 
 .timeline-panel__time {

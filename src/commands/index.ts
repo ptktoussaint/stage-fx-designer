@@ -6,7 +6,7 @@
 import { useHistoryStore } from '../stores/historyStore';
 import { useProjectStore } from '../stores/projectStore';
 import type { Command } from './Command';
-import type { AudioConfig, DeviceDefinition, DeviceInstance, TimelineEvent, Vector3 } from '../types';
+import type { AudioConfig, DeviceDefinition, DeviceInstance, HotkeyBinding, TimelineEvent, Vector3 } from '../types';
 import {
   AddDeviceCommand,
   DuplicateDevicesCommand,
@@ -23,6 +23,7 @@ import {
   RemoveTimelineEventCommand,
   UpdateTimelineEventCommand,
 } from './timelineCommands';
+import { AssignHotkeyCommand, RemoveHotkeyCommand, UpdateHotkeyCommand } from './hotkeyCommands';
 import type { Group } from '../types';
 
 const dispatch = (command: Command) => useHistoryStore.getState().execute(command);
@@ -105,6 +106,19 @@ export function removeTimelineEvent(event: TimelineEvent): void {
 /** Not undoable — see projectStore.setAudio for why. */
 export function setAudio(patch: Partial<AudioConfig>): void {
   useProjectStore.getState().setAudio(patch);
+}
+
+export function assignHotkey(code: string, keyLabel: string, deviceIds: string[], name: string): void {
+  if (deviceIds.length === 0) return;
+  dispatch(new AssignHotkeyCommand(code, keyLabel, deviceIds, name));
+}
+
+export function removeHotkey(binding: HotkeyBinding): void {
+  dispatch(new RemoveHotkeyCommand(binding));
+}
+
+export function updateHotkey(bindingId: string, before: Partial<HotkeyBinding>, after: Partial<HotkeyBinding>): void {
+  dispatch(new UpdateHotkeyCommand(bindingId, before, after));
 }
 
 export function undo(): void {

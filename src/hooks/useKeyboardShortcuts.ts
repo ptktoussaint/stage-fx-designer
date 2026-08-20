@@ -4,18 +4,17 @@ import { useProjectStore } from '../stores/projectStore';
 import { usePlaybackStore } from '../stores/playbackStore';
 import { undo, redo, removeDevices, duplicateDevices, createGroup } from '../commands';
 import { saveProjectToLocal } from '../persistence/autosave';
+import { isTypingInField } from '../utils/dom';
 
 const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4fb8d6'];
 
-function isTypingInField(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.tagName === 'INPUT' ||
-    target.tagName === 'TEXTAREA' ||
-    target.tagName === 'SELECT' ||
-    target.isContentEditable
-  );
-}
+/**
+ * Copy/paste "clipboard" for devices. A plain module-level array rather
+ * than store state — it's not part of the project (nothing to persist or
+ * undo about the clipboard itself, only about the paste it produces) and
+ * this hook is mounted exactly once near the app root.
+ */
+let deviceClipboard: string[] = [];
 
 /** Mount once near the app root. Professional-editor shortcut set (see spec §20). */
 export function useKeyboardShortcuts(): void {
@@ -40,6 +39,24 @@ export function useKeyboardShortcuts(): void {
       if (isMeta && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         undo();
+        return;
+      }
+      if (isMeta && e.key.toLowerCase() === 'c') {
+        const selected = useSelectionStore.getState().selectedDeviceIds;
+        if (selected.length > 0) {
+          e.preventDefault();
+          deviceClipboard = selected;
+        }
+        return;
+      }
+      if (isMeta && e.key.toLowerCase() === 'v') {
+        if (deviceClipboard.length > 0) {
+          e.preventDefault();
+          // Reuses the same offset-and-rename logic as Duplicate — pasting
+          // is "duplicate the copied devices," just decoupled from the
+          // current selection so copy-then-select-elsewhere-then-paste works.
+          duplicateDevices(deviceClipboard);
+        }
         return;
       }
       if (isMeta && e.key.toLowerCase() === 'd') {

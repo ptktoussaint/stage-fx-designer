@@ -12,6 +12,7 @@ import { saveProjectToLocal } from '../../persistence/autosave';
 import { migrateProject } from '../../persistence/schema';
 import { Modal } from '../common/Modal';
 import { StageSettingsForm } from '../inspector/StageSettingsForm';
+import { HotkeysPanel } from '../hotkeys/HotkeysPanel';
 import './TopToolbar.css';
 
 export function TopToolbar() {
@@ -33,6 +34,10 @@ export function TopToolbar() {
 
   const isSettingsOpen = useUiStore((s) => s.isStageSettingsOpen);
   const setSettingsOpen = useUiStore((s) => s.setStageSettingsOpen);
+  const isHotkeysPanelOpen = useUiStore((s) => s.isHotkeysPanelOpen);
+  const setHotkeysPanelOpen = useUiStore((s) => s.setHotkeysPanelOpen);
+  const isRecording = usePlaybackStore((s) => s.isRecording);
+  const toggleRecording = usePlaybackStore((s) => s.toggleRecording);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleNew = () => {
@@ -137,11 +142,19 @@ export function TopToolbar() {
           active={isPlaying}
           onClick={() => (isPlaying ? stop() : togglePlay())}
         />
+        <IconButton
+          icon="record"
+          label={isRecording ? 'Stop Recording Hotkey Cues' : 'Record Hotkey Cues to Timeline'}
+          active={isRecording}
+          onClick={toggleRecording}
+          className={isRecording ? 'top-toolbar__record-active' : undefined}
+        />
       </div>
 
       <div className="top-toolbar__divider" />
 
       <div className="top-toolbar__group">
+        <IconButton icon="keyboard" label="Hotkeys" onClick={() => setHotkeysPanelOpen(true)} />
         <IconButton icon="download" label="Export" onClick={handleExport} />
         <IconButton icon="settings" label="Settings" onClick={() => setSettingsOpen(true)} />
       </div>
@@ -149,6 +162,11 @@ export function TopToolbar() {
       {isSettingsOpen && (
         <Modal title="Stage Settings" onClose={() => setSettingsOpen(false)}>
           <StageSettingsForm />
+        </Modal>
+      )}
+      {isHotkeysPanelOpen && (
+        <Modal title="Hotkeys" onClose={() => setHotkeysPanelOpen(false)}>
+          <HotkeysPanel />
         </Modal>
       )}
     </header>

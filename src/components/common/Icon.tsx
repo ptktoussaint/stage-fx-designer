@@ -38,7 +38,10 @@ export type IconName =
   | 'chevron-right'
   | 'grid'
   | 'music'
-  | 'cue';
+  | 'cue'
+  | 'keyboard'
+  | 'record'
+  | 'scissors';
 
 const PATHS: Record<IconName, string> = {
   flame: 'M12 2c1 3-3 4-3 7a3 3 0 1 0 6 0c0-1-.5-2-1-2 1 3-1 4-2 4a2 2 0 0 1-2-2c0-2 2-3 2-7Z',
@@ -76,6 +79,9 @@ const PATHS: Record<IconName, string> = {
   grid: 'M4 4h16v16H4z M4 10h16 M4 16h16 M10 4v16 M16 4v16',
   music: 'M9 18V5l11-2v13 M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z M20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   cue: 'M12 2v20 M12 2 5 9h14L12 2Z',
+  keyboard: 'M3 6h18v12H3z M6 10h0 M9 10h0 M12 10h0 M15 10h0 M18 10h0 M6 14h12',
+  record: 'M12 20a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z',
+  scissors: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M8.5 8 20 20 M20 4 8.5 16',
 };
 
 interface IconProps {
