@@ -90,6 +90,18 @@
   background: rgba(79, 140, 255, 0.28);
 }
 
+.inspector-trigger-button--cue {
+  margin-top: 6px;
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.inspector-trigger-button--cue:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .inspector-empty {
   padding: 12px;
   color: var(--text-muted);

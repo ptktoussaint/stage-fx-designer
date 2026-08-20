@@ -1,10 +1,19 @@
 import { useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
+import { usePlaybackStore } from '../../stores/playbackStore';
 import { getDeviceDefinition } from '../../devices/registry';
-import { updateDeviceProperty, createGroup, setDevicesLocked, removeDevices, duplicateDevices } from '../../commands';
+import {
+  updateDeviceProperty,
+  createGroup,
+  setDevicesLocked,
+  removeDevices,
+  duplicateDevices,
+  addTimelineEvent,
+} from '../../commands';
 import { NumberField } from '../common/NumberField';
 import { IconButton } from '../common/IconButton';
 import { eventBus } from '../../engine/eventBus';
+import { formatTime } from '../../utils/time';
 import type { DeviceInstance } from '../../types';
 
 const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4fb8d6'];
@@ -12,6 +21,7 @@ const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4
 export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
   const definition = getDeviceDefinition(device.definitionId);
   const groups = useProjectStore((s) => s.project.groups);
+  const currentTime = usePlaybackStore((s) => s.currentTime);
   const [newGroupName, setNewGroupName] = useState('');
 
   if (!definition) return <div className="inspector-empty">Unknown device type.</div>;
@@ -145,6 +155,24 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
         }
       >
         Test Trigger
+      </button>
+
+      <button
+        type="button"
+        className="inspector-trigger-button inspector-trigger-button--cue"
+        title="Adds a timeline event for this device at the current playhead position"
+        onClick={() =>
+          addTimelineEvent({
+            time: currentTime,
+            duration: 0.5,
+            targetType: 'device',
+            targetId: device.id,
+            action: 'trigger',
+            parameters: {},
+          })
+        }
+      >
+        Add Cue at {formatTime(currentTime)}
       </button>
 
       <div className="inspector-group-title">Groups</div>

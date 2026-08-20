@@ -90,24 +90,12 @@
   font-family: var(--font-ui);
 }
 
-.stage-renderer-3d-placeholder {
+.stage-renderer-3d {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  text-align: center;
-  background: var(--bg-app);
 }
 
-.stage-renderer-3d-placeholder__title {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 4px;
-}
-
-.stage-renderer-3d-placeholder__subtitle {
-  font-size: 11px;
-  max-width: 320px;
+.stage-renderer-3d canvas {
+  display: block;
+  outline: none;
 }

@@ -1,17 +1,40 @@
 import { useState } from 'react';
-import { alignDevices, createGroup, distributeDevices, removeDevices, setDevicesLocked } from '../../commands';
+import { alignDevices, createGroup, distributeDevices, removeDevices, setDevicesLocked, addTimelineEvent } from '../../commands';
+import { usePlaybackStore } from '../../stores/playbackStore';
 import { IconButton } from '../common/IconButton';
+import { formatTime } from '../../utils/time';
 import type { DeviceInstance } from '../../types';
 
 const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4fb8d6'];
 
 export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }) {
   const ids = devices.map((d) => d.id);
+  const currentTime = usePlaybackStore((s) => s.currentTime);
   const [groupName, setGroupName] = useState('');
 
   return (
     <div className="inspector-section">
       <div className="inspector-group-title">{devices.length} Devices Selected</div>
+
+      <button
+        type="button"
+        className="inspector-trigger-button inspector-trigger-button--cue"
+        title="Adds one timeline event per selected device, all at the current playhead position"
+        onClick={() =>
+          ids.forEach((deviceId) =>
+            addTimelineEvent({
+              time: currentTime,
+              duration: 0.5,
+              targetType: 'device',
+              targetId: deviceId,
+              action: 'trigger',
+              parameters: {},
+            }),
+          )
+        }
+      >
+        Add Cue for {devices.length} Devices at {formatTime(currentTime)}
+      </button>
 
       <div className="inspector-group-title">Align</div>
       <div className="inspector-toolgrid">
