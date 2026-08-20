@@ -19,7 +19,7 @@ const MIN_GAP_SECONDS = 0.2;
  * dragging back out to the edges.
  */
 export function TimelineTrimHandles({ pxPerSecond, height, duration }: TimelineTrimHandlesProps) {
-  const trimStart = useProjectStore((s) => s.project.audio.trimStart);
+  const trimStart = useProjectStore((s) => s.project.audio.trimStart) ?? 0;
   const trimEnd = useProjectStore((s) => s.project.audio.trimEnd) ?? duration;
   const containerRef = useRef<HTMLDivElement>(null);
 
