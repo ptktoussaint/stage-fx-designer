@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  AudioConfig,
   DeviceInstance,
   Group,
   Project,
@@ -59,6 +60,14 @@ interface ProjectState {
   _setStage: (patch: Partial<StageConfig>) => void;
   _setSettings: (patch: Partial<ProjectSettings>) => void;
   _setProjectName: (name: string) => void;
+
+  /**
+   * Not underscore-prefixed on purpose: importing/removing an audio track
+   * is a one-off project-setup action, not a device/timeline edit a user
+   * would expect on the undo stack, so it bypasses the Command Pattern and
+   * is safe to call directly from UI code.
+   */
+  setAudio: (patch: Partial<AudioConfig>) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
@@ -196,4 +205,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
 
   _setProjectName: (name) =>
     set((s) => ({ project: { ...s.project, name, updatedAt: new Date().toISOString() } })),
+
+  setAudio: (patch) =>
+    set((s) => ({
+      project: { ...s.project, audio: { ...s.project.audio, ...patch }, updatedAt: new Date().toISOString() },
+    })),
 }));

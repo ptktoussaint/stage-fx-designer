@@ -6,13 +6,24 @@ import type { TimelineData } from './timeline';
 export const CURRENT_SCHEMA_VERSION = 1;
 
 export interface AudioConfig {
-  /** Object URL or asset reference for the loaded track; null if none loaded. */
+  /**
+   * Object URL for the loaded track, valid only for the current page
+   * session — object URLs never survive a reload. The persisted source of
+   * truth is the raw Blob kept separately in IndexedDB (see
+   * src/persistence/audioStorage.ts) and re-attached to a fresh object URL
+   * on load. Never persist a blob: URL string as if it were durable.
+   */
   sourceUrl: string | null;
   fileName: string | null;
   /** Duration in seconds, once known. */
   duration: number | null;
   /** Offset applied when aligning audio to timeline zero, in seconds. */
   offset: number;
+  /**
+   * Downsampled amplitude peaks (0..1) for waveform rendering, computed once
+   * at import time so the Timeline never has to re-decode the audio file.
+   */
+  waveformPeaks: number[] | null;
 }
 
 export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
@@ -20,6 +31,7 @@ export const DEFAULT_AUDIO_CONFIG: AudioConfig = {
   fileName: null,
   duration: null,
   offset: 0,
+  waveformPeaks: null,
 };
 
 export interface ProjectSettings {

@@ -6,6 +6,8 @@ import { IconButton } from '../common/IconButton';
 import { formatTime } from '../../utils/time';
 import { TimelineRuler } from './TimelineRuler';
 import { TimelineTrack } from './TimelineTrack';
+import { TimelineWaveform } from './TimelineWaveform';
+import { AudioImportControl } from './AudioImportControl';
 import './TimelinePanel.css';
 
 const PX_PER_SECOND = 60;
@@ -14,8 +16,9 @@ export function TimelinePanel() {
   const devices = useProjectStore((s) => s.project.devices);
   const groups = useProjectStore((s) => s.project.groups);
   const events = useProjectStore((s) => s.project.timeline.events);
+  const audio = useProjectStore((s) => s.project.audio);
   const currentTime = usePlaybackStore((s) => s.currentTime);
-  const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
+  const seek = usePlaybackStore((s) => s.seek);
   const isTimelineCollapsed = useUiStore((s) => s.isTimelineCollapsed);
   const toggleCollapsed = useUiStore((s) => s.toggleTimelineCollapsed);
 
@@ -23,8 +26,8 @@ export function TimelinePanel() {
 
   const durationSeconds = useMemo(() => {
     const lastEventEnd = events.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-    return Math.max(60, lastEventEnd + 15, currentTime + 15);
-  }, [events, currentTime]);
+    return Math.max(60, audio.duration ?? 0, lastEventEnd + 15, currentTime + 15);
+  }, [events, currentTime, audio.duration]);
 
   if (isTimelineCollapsed) {
     return (
@@ -43,6 +46,7 @@ export function TimelinePanel() {
           TIMELINE
         </span>
         <span className="timeline-panel__hint">Double-click a lane to add an event · drag to reposition</span>
+        <AudioImportControl />
         <IconButton icon="chevron-down" label="Collapse Timeline" onClick={toggleCollapsed} />
       </div>
       <div className="timeline-panel__scroll" onClick={() => setSelectedEventId(null)}>
@@ -51,8 +55,13 @@ export function TimelinePanel() {
             pxPerSecond={PX_PER_SECOND}
             durationSeconds={durationSeconds}
             currentTime={currentTime}
-            onScrub={setCurrentTime}
+            onScrub={seek}
           />
+          {audio.waveformPeaks && (
+            <div className="timeline-panel__waveform">
+              <TimelineWaveform peaks={audio.waveformPeaks} pxPerSecond={PX_PER_SECOND} height={36} />
+            </div>
+          )}
           <div className="timeline-panel__tracks">
             {groups.map((group) => (
               <TimelineTrack

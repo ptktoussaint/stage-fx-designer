@@ -36,7 +36,8 @@ export type IconName =
   | 'cursor'
   | 'chevron-down'
   | 'chevron-right'
-  | 'grid';
+  | 'grid'
+  | 'music';
 
 const PATHS: Record<IconName, string> = {
   flame: 'M12 2c1 3-3 4-3 7a3 3 0 1 0 6 0c0-1-.5-2-1-2 1 3-1 4-2 4a2 2 0 0 1-2-2c0-2 2-3 2-7Z',
@@ -72,6 +73,7 @@ const PATHS: Record<IconName, string> = {
   'chevron-down': 'M6 9l6 6 6-6',
   'chevron-right': 'M9 6l6 6-6 6',
   grid: 'M4 4h16v16H4z M4 10h16 M4 16h16 M10 4v16 M16 4v16',
+  music: 'M9 18V5l11-2v13 M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z M20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
 };
 
 interface IconProps {

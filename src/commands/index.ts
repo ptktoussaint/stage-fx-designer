@@ -4,8 +4,9 @@
  * keeps every state change routed through the undo/redo history.
  */
 import { useHistoryStore } from '../stores/historyStore';
+import { useProjectStore } from '../stores/projectStore';
 import type { Command } from './Command';
-import type { DeviceDefinition, DeviceInstance, TimelineEvent, Vector3 } from '../types';
+import type { AudioConfig, DeviceDefinition, DeviceInstance, TimelineEvent, Vector3 } from '../types';
 import {
   AddDeviceCommand,
   DuplicateDevicesCommand,
@@ -99,6 +100,11 @@ export function updateTimelineEvent(
 
 export function removeTimelineEvent(event: TimelineEvent): void {
   dispatch(new RemoveTimelineEventCommand(event));
+}
+
+/** Not undoable — see projectStore.setAudio for why. */
+export function setAudio(patch: Partial<AudioConfig>): void {
+  useProjectStore.getState().setAudio(patch);
 }
 
 export function undo(): void {
