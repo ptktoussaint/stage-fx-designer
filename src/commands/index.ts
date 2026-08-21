@@ -31,6 +31,7 @@ import { CreateGroupCommand, SetDevicesLockedCommand, UngroupCommand } from './g
 import {
   AddTimelineEventCommand,
   RemoveTimelineEventCommand,
+  RemoveTimelineEventsCommand,
   UpdateTimelineEventCommand,
 } from './timelineCommands';
 import { AssignHotkeyCommand, RemoveHotkeyCommand, UpdateHotkeyCommand } from './hotkeyCommands';
@@ -118,6 +119,11 @@ export function updateTimelineEvent(
 
 export function removeTimelineEvent(event: TimelineEvent): void {
   dispatch(new RemoveTimelineEventCommand(event));
+}
+
+export function removeTimelineEvents(eventIds: string[]): void {
+  if (eventIds.length === 0) return;
+  dispatch(new RemoveTimelineEventsCommand(eventIds));
 }
 
 /** Not undoable — see projectStore.setAudio for why. */

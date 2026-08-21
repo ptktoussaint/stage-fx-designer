@@ -13,12 +13,14 @@ export const co2Devices: DeviceDefinition[] = [
       variableDuration: true,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
     },
     defaultParameters: {
       height: 4,
       duration: 1.5,
       intensity: 1,
       angle: 90,
+      width: 1,
     },
   },
 ];

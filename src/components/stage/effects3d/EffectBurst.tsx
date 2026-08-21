@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Mesh, MeshBasicMaterial } from 'three';
-import type { Effect3DProps } from './types';
+import { directionFromAngle, type Effect3DProps } from './types';
 
 const PARTICLE_COUNT = 16;
 const RISE_DURATION = 0.55;
@@ -9,11 +9,12 @@ const FALL_DURATION = 0.7;
 const GRAVITY = 4;
 
 /** Fast rise to apex height then a radial firework-style burst that falls and fades — mine, comet. */
-export function EffectBurst({ id, position, color, height, onDone }: Effect3DProps) {
+export function EffectBurst({ id, position, color, height, angle, yaw, width, onDone }: Effect3DProps) {
   const coreRef = useRef<Mesh | null>(null);
   const sparkRefs = useRef<(Mesh | null)[]>([]);
   const elapsed = useRef(0);
   const done = useRef(false);
+  const direction = useMemo(() => directionFromAngle(angle, yaw), [angle, yaw]);
 
   const sparks = useMemo(
     () =>
@@ -37,20 +38,24 @@ export function EffectBurst({ id, position, color, height, onDone }: Effect3DPro
 
     if (t < RISE_DURATION) {
       const progress = t / RISE_DURATION;
+      const travel = progress * height;
       if (coreRef.current) {
-        coreRef.current.position.set(0, progress * height, 0);
+        coreRef.current.position.set(direction.x * travel, direction.y * travel, direction.z * travel);
         (coreRef.current.material as MeshBasicMaterial).opacity = 1;
       }
     } else {
       if (coreRef.current) (coreRef.current.material as MeshBasicMaterial).opacity = 0;
       const burstT = t - RISE_DURATION;
       const progress = Math.min(1, burstT / FALL_DURATION);
+      const apexX = direction.x * height;
+      const apexY = direction.y * height;
+      const apexZ = direction.z * height;
       sparks.forEach((s, i) => {
         const mesh = sparkRefs.current[i];
         if (!mesh) return;
-        const x = s.vx * burstT;
-        const z = s.vz * burstT;
-        const y = height + s.vy * burstT - 0.5 * GRAVITY * burstT * burstT;
+        const x = apexX + s.vx * burstT * width;
+        const z = apexZ + s.vz * burstT * width;
+        const y = apexY + s.vy * burstT * width - 0.5 * GRAVITY * burstT * burstT;
         mesh.position.set(x, Math.max(0, y), z);
         (mesh.material as MeshBasicMaterial).opacity = Math.max(0, 1 - progress);
       });

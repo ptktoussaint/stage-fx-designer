@@ -13,7 +13,7 @@ import {
   moveDevices,
   movePlatform,
   moveFigure,
-  removeTimelineEvent,
+  removeTimelineEvents,
   updateTimelineEvent,
 } from '../commands';
 import { saveProjectToLocal } from '../persistence/autosave';
@@ -111,15 +111,9 @@ export function useKeyboardShortcuts(): void {
         } else if (selection.selectedFigureIds.length > 0) {
           e.preventDefault();
           removeFigures(selection.selectedFigureIds);
-        } else if (selection.selectedTimelineEventId) {
-          const event = useProjectStore
-            .getState()
-            .project.timeline.events.find((ev) => ev.id === selection.selectedTimelineEventId);
-          if (event) {
-            e.preventDefault();
-            removeTimelineEvent(event);
-            selection.selectTimelineEvent(null);
-          }
+        } else if (selection.selectedTimelineEventIds.length > 0) {
+          e.preventDefault();
+          removeTimelineEvents(selection.selectedTimelineEventIds);
         }
         return;
       }
@@ -132,18 +126,20 @@ export function useKeyboardShortcuts(): void {
           selection.selectedFigureIds.length > 0;
 
         if (!hasStageSelection) {
-          // No device/platform/figure selected — a timeline cue might be,
-          // in which case Left/Right nudges its time instead of an x/y
+          // No device/platform/figure selected — timeline cues might be, in
+          // which case Left/Right nudges their time instead of an x/y
           // position (cues are 1-D: a time, not a place on the stage).
-          if (selection.selectedTimelineEventId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-            const event = useProjectStore
-              .getState()
-              .project.timeline.events.find((ev) => ev.id === selection.selectedTimelineEventId);
-            if (event) {
+          if (selection.selectedTimelineEventIds.length > 0 && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            const allEvents = useProjectStore.getState().project.timeline.events;
+            const selectedEvents = allEvents.filter((ev) => selection.selectedTimelineEventIds.includes(ev.id));
+            if (selectedEvents.length > 0) {
               e.preventDefault();
               const step = e.shiftKey ? 1 : 0.1;
-              const nextTime = Math.max(0, event.time + (e.key === 'ArrowLeft' ? -step : step));
-              updateTimelineEvent(event.id, { time: event.time }, { time: nextTime });
+              const delta = e.key === 'ArrowLeft' ? -step : step;
+              selectedEvents.forEach((event) => {
+                const nextTime = Math.max(0, event.time + delta);
+                updateTimelineEvent(event.id, { time: event.time }, { time: nextTime });
+              });
             }
           }
           return;

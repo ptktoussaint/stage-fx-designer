@@ -110,6 +110,13 @@ export function StageRenderer3D() {
         shadows
         camera={{ position: cameraPosition, fov: 45, near: 0.1, far: 500 }}
         onPointerMissed={() => clearSelection()}
+        // preserveDrawingBuffer keeps the last-rendered frame available
+        // between draws — without it, WebGL clears the buffer for
+        // performance right after compositing, so canvas.captureStream()
+        // (used by the clip recorder) can sample a just-cleared/stale
+        // buffer on some frames, which reads as dropped-fps stutter in the
+        // recorded video even though the live view looks smooth.
+        gl={{ preserveDrawingBuffer: true }}
       >
         <color attach="background" args={['#0c0d0f']} />
         <ambientLight intensity={0.55} />

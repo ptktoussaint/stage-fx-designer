@@ -15,12 +15,19 @@ import {
 } from '../../commands';
 import { NumberField } from '../common/NumberField';
 import { IconButton } from '../common/IconButton';
+import type { IconName } from '../common/Icon';
 import { HotkeyCaptureButton } from '../common/HotkeyCaptureButton';
 import { eventBus } from '../../engine/eventBus';
 import { formatTime } from '../../utils/time';
 import type { DeviceInstance } from '../../types';
 
 const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4fb8d6'];
+
+const SHAPE_OPTIONS: { value: string; label: string; icon: IconName }[] = [
+  { value: 'open', label: 'Open', icon: 'shape-open' },
+  { value: 'cone', label: 'Cone (\\/)', icon: 'shape-cone' },
+  { value: 'invertedCone', label: 'Inverted Cone (/\\)', icon: 'shape-inverted-cone' },
+];
 
 export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
   const definition = getDeviceDefinition(device.definitionId);
@@ -115,6 +122,27 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
 
       <div className="inspector-group-title">Parameters</div>
       {Object.entries(device.customProperties).map(([key, value]) => {
+        if (key === 'shape' && typeof value === 'string') {
+          return (
+            <div key={key} className="inspector-section__row inspector-section__row--gap">
+              {SHAPE_OPTIONS.map((opt) => (
+                <IconButton
+                  key={opt.value}
+                  icon={opt.icon}
+                  label={opt.label}
+                  active={value === opt.value}
+                  onClick={() =>
+                    commit(
+                      { customProperties: device.customProperties },
+                      { customProperties: { ...device.customProperties, shape: opt.value } },
+                      'Edit Shape',
+                    )
+                  }
+                />
+              ))}
+            </div>
+          );
+        }
         if (typeof value === 'number') {
           return (
             <NumberField

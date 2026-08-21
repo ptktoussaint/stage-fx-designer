@@ -34,6 +34,10 @@ export interface DeviceCapabilities {
   variableIntensity: boolean;
   /** Does it support a firing angle / rotation parameter? */
   variableAngle: boolean;
+  /** Does it support a spread/width parameter (how wide the effect opens)? */
+  variableWidth?: boolean;
+  /** Does it support a shape variant (open / cone / inverted cone)? */
+  variableShape?: boolean;
   /** Maximum simultaneous shots (pyro-style devices), if relevant. */
   maxShots?: number;
 }

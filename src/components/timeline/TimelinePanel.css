@@ -159,6 +159,31 @@
   pointer-events: none;
 }
 
+.timeline-panel__box-select {
+  position: absolute;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid var(--accent);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.timeline-panel__auto-render-active {
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+  color: #fff !important;
+  animation: timeline-auto-render-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes timeline-auto-render-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .timeline-panel__empty {
   padding: 14px;
   color: var(--text-muted);

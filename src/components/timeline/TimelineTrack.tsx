@@ -14,7 +14,7 @@ interface TimelineTrackProps {
   targetId: string;
   events: TimelineEvent[];
   pxPerSecond: number;
-  selectedEventId: string | null;
+  selectedEventIds: string[];
   onSelectEvent: (eventId: string | null) => void;
   /** A cue outside [trimStart, trimEnd) never fires during playback (the Show Engine never reaches it) — dimmed to match the waveform's trim mask rather than hidden, since it's still there if the trim moves back out. */
   trimStart: number;
@@ -35,7 +35,7 @@ export function TimelineTrack({
   targetId,
   events,
   pxPerSecond,
-  selectedEventId,
+  selectedEventIds,
   onSelectEvent,
   trimStart,
   trimEnd,
@@ -157,7 +157,7 @@ export function TimelineTrack({
             event={event}
             pxPerSecond={pxPerSecond}
             color={color}
-            isSelected={selectedEventId === event.id}
+            isSelected={selectedEventIds.includes(event.id)}
             isOutsideTrim={event.time < trimStart || (trimEnd != null && event.time >= trimEnd)}
             onPointerDown={handleEventPointerDown}
             onDelete={(ev) => {

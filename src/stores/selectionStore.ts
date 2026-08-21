@@ -11,13 +11,14 @@ interface SelectionState {
    */
   selectedPlatformIds: string[];
   selectedFigureIds: string[];
-  /** The selected timeline cue (TimelineEvent), if any. Independent of the
-   * stage selection above — kept in this shared store (rather than as local
-   * component state, which is where it lived before) specifically so the
-   * global keyboard shortcut handler can reach it for Delete/arrow-key
+  /** The selected timeline cue(s) (TimelineEvent), if any. Independent of
+   * the stage selection above — kept in this shared store (rather than as
+   * local component state, which is where it lived before) specifically so
+   * the global keyboard shortcut handler can reach it for Delete/arrow-key
    * support, the same way it already reaches device/platform/figure
-   * selection. */
-  selectedTimelineEventId: string | null;
+   * selection. An array (not a single id) so the timeline's mouse-drag
+   * box-select can mark several cues at once for bulk deletion. */
+  selectedTimelineEventIds: string[];
   /** True while a box-selection drag is in progress on the Stage Editor. */
   isBoxSelecting: boolean;
 
@@ -33,13 +34,16 @@ interface SelectionState {
   selectPlatform: (platformId: string) => void;
   selectFigure: (figureId: string) => void;
   selectTimelineEvent: (eventId: string | null) => void;
+  /** Replaces the whole timeline cue selection — used by the timeline's
+   * mouse-drag box-select to mark everything the drag rectangle covered. */
+  selectTimelineEvents: (eventIds: string[]) => void;
 }
 
 export const useSelectionStore = create<SelectionState>((set, get) => ({
   selectedDeviceIds: [],
   selectedPlatformIds: [],
   selectedFigureIds: [],
-  selectedTimelineEventId: null,
+  selectedTimelineEventIds: [],
   isBoxSelecting: false,
 
   select: (deviceId) => {
@@ -47,7 +51,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedDeviceIds: [deviceId],
       selectedPlatformIds: [],
       selectedFigureIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [deviceId] });
   },
@@ -61,7 +65,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedDeviceIds: next,
       selectedPlatformIds: [],
       selectedFigureIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: next });
   },
@@ -71,7 +75,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedDeviceIds: deviceIds,
       selectedPlatformIds: [],
       selectedFigureIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds });
   },
@@ -83,7 +87,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedDeviceIds: next,
       selectedPlatformIds: [],
       selectedFigureIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: next });
   },
@@ -93,7 +97,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedDeviceIds: [],
       selectedPlatformIds: [],
       selectedFigureIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [] });
   },
@@ -105,7 +109,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedPlatformIds: [platformId],
       selectedDeviceIds: [],
       selectedFigureIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [] });
   },
@@ -115,7 +119,7 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
       selectedFigureIds: [figureId],
       selectedDeviceIds: [],
       selectedPlatformIds: [],
-      selectedTimelineEventId: null,
+      selectedTimelineEventIds: [],
     });
     eventBus.emit('SELECTION_CHANGED', { deviceIds: [] });
   },
@@ -123,7 +127,14 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
   selectTimelineEvent: (eventId) =>
     set(
       eventId
-        ? { selectedTimelineEventId: eventId, selectedDeviceIds: [], selectedPlatformIds: [], selectedFigureIds: [] }
-        : { selectedTimelineEventId: null },
+        ? { selectedTimelineEventIds: [eventId], selectedDeviceIds: [], selectedPlatformIds: [], selectedFigureIds: [] }
+        : { selectedTimelineEventIds: [] },
+    ),
+
+  selectTimelineEvents: (eventIds) =>
+    set(
+      eventIds.length > 0
+        ? { selectedTimelineEventIds: eventIds, selectedDeviceIds: [], selectedPlatformIds: [], selectedFigureIds: [] }
+        : { selectedTimelineEventIds: [] },
     ),
 }));

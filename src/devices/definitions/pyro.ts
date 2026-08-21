@@ -45,9 +45,10 @@ export const pyroDevices: DeviceDefinition[] = [
       variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
       maxShots: 1,
     },
-    defaultParameters: { height: 8, intensity: 0.7, angle: 90 },
+    defaultParameters: { height: 8, intensity: 0.7, angle: 90, width: 1 },
   },
   {
     id: 'comet',
@@ -61,8 +62,9 @@ export const pyroDevices: DeviceDefinition[] = [
       variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
       maxShots: 1,
     },
-    defaultParameters: { height: 15, intensity: 1, angle: 90 },
+    defaultParameters: { height: 15, intensity: 1, angle: 90, width: 1 },
   },
 ];

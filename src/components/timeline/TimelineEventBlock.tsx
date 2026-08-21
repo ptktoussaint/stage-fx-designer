@@ -26,6 +26,7 @@ export function TimelineEventBlock({
   return (
     <div
       className={`timeline-event${isSelected ? ' timeline-event--selected' : ''}${isOutsideTrim ? ' timeline-event--outside-trim' : ''}`}
+      data-event-id={event.id}
       style={{ left: event.time * pxPerSecond, width, background: color }}
       onPointerDown={(e) => onPointerDown(e, event)}
       onClick={(e) => e.stopPropagation()}

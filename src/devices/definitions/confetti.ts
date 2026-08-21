@@ -13,9 +13,10 @@ export const confettiDevices: DeviceDefinition[] = [
       variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
       maxShots: 1,
     },
-    defaultParameters: { height: 6, intensity: 1, angle: 90 },
+    defaultParameters: { height: 6, intensity: 1, angle: 90, width: 1 },
   },
   {
     id: 'streamer',
@@ -29,8 +30,9 @@ export const confettiDevices: DeviceDefinition[] = [
       variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
       maxShots: 1,
     },
-    defaultParameters: { height: 8, intensity: 1, angle: 90 },
+    defaultParameters: { height: 8, intensity: 1, angle: 90, width: 1 },
   },
 ];

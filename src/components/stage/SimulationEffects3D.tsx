@@ -9,6 +9,7 @@ import { EffectJet } from './effects3d/EffectJet';
 import { EffectBurst } from './effects3d/EffectBurst';
 import { EffectCloud } from './effects3d/EffectCloud';
 import { EffectConfettiFall } from './effects3d/EffectConfettiFall';
+import type { EffectShape } from './effects3d/types';
 import type { SimulationType } from '../../types';
 
 type EffectFamily = 'jet' | 'burst' | 'cloud' | 'confetti';
@@ -49,6 +50,10 @@ interface ActiveEffect {
   position: [number, number, number];
   color: string;
   height: number;
+  angle: number;
+  yaw: number;
+  width: number;
+  shape?: EffectShape;
   simulationType: SimulationType;
 }
 
@@ -70,6 +75,9 @@ export function SimulationEffects3D() {
         const height = typeof parameters.height === 'number' ? parameters.height : 3;
         const color = device.color ?? CATEGORY_COLOR_HEX[definition.category];
         const originY = localFloorElevation(device.position.y, project.stage.height) + device.position.z;
+        const angle = typeof parameters.angle === 'number' ? parameters.angle : 90;
+        const width = typeof parameters.width === 'number' ? parameters.width : 1;
+        const shape = typeof parameters.shape === 'string' ? (parameters.shape as EffectShape) : undefined;
 
         setActive((prev) => {
           const next = [
@@ -80,6 +88,10 @@ export function SimulationEffects3D() {
               position: [device.position.x, originY, device.position.y] as [number, number, number],
               color,
               height,
+              angle,
+              yaw: device.rotation.z,
+              width,
+              shape,
               simulationType: simulationType as SimulationType,
             },
           ];
@@ -99,6 +111,10 @@ export function SimulationEffects3D() {
           position: effect.position,
           color: effect.color,
           height: effect.height,
+          angle: effect.angle,
+          yaw: effect.yaw,
+          width: effect.width,
+          shape: effect.shape,
           simulationType: effect.simulationType,
           onDone: remove,
         };

@@ -13,12 +13,14 @@ export const fireDevices: DeviceDefinition[] = [
       variableDuration: true,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
     },
     defaultParameters: {
       height: 3,
       duration: 1.2,
       intensity: 0.8,
-      angle: 0,
+      angle: 90,
+      width: 1,
     },
   },
   {

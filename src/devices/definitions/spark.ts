@@ -13,12 +13,16 @@ export const sparkDevices: DeviceDefinition[] = [
       variableDuration: true,
       variableIntensity: true,
       variableAngle: true,
+      variableWidth: true,
+      variableShape: true,
     },
     defaultParameters: {
       height: 5,
       duration: 2,
       intensity: 0.9,
       angle: 90,
+      width: 1,
+      shape: 'cone',
     },
   },
 ];

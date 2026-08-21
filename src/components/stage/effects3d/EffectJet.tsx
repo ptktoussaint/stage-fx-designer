@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { AdditiveBlending, Color, type Mesh, type MeshBasicMaterial } from 'three';
-import type { Effect3DProps } from './types';
+import { directionFromAngle, type Effect3DProps } from './types';
 
 const PARTICLE_COUNT = 20;
 const DURATION = 1.1;
@@ -16,11 +16,12 @@ const HOT_CORE = new Color('#fff3c4');
  *  - spark: tiny bright additive points, fast and short-lived.
  *  - co2 (default): larger, softer, non-additive puffs — reads as vapor.
  */
-export function EffectJet({ id, position, color, height, simulationType, onDone }: Effect3DProps) {
+export function EffectJet({ id, position, color, height, angle, yaw, width, shape, simulationType, onDone }: Effect3DProps) {
   const meshRefs = useRef<(Mesh | null)[]>([]);
   const elapsed = useRef(0);
   const done = useRef(false);
   const deviceColor = useMemo(() => new Color(color), [color]);
+  const direction = useMemo(() => directionFromAngle(angle, yaw), [angle, yaw]);
   const isFlame = simulationType === 'flame';
   const isSpark = simulationType === 'spark';
 
@@ -53,12 +54,19 @@ export function EffectJet({ id, position, color, height, simulationType, onDone 
       }
       const progress = Math.min(1, local / DURATION);
       const wobble = isFlame ? Math.sin(local * 10 + p.flicker) * 0.04 * progress : 0;
-      const y = progress * height * p.speed;
-      const spread = 1 + progress * (isFlame ? 1.4 : 2);
+      const travel = progress * height * p.speed;
+      const baseGrowth = isFlame ? 1.4 : 2;
+      const spreadFactor =
+        shape === 'invertedCone'
+          ? 1 + (1 - progress) * baseGrowth
+          : shape === 'open'
+            ? 1 + baseGrowth
+            : 1 + progress * baseGrowth;
+      const spread = spreadFactor * width;
       mesh.position.set(
-        Math.cos(p.angle) * p.radius * spread + wobble,
-        y,
-        Math.sin(p.angle) * p.radius * spread + wobble,
+        direction.x * travel + Math.cos(p.angle) * p.radius * spread + wobble,
+        direction.y * travel,
+        direction.z * travel + Math.sin(p.angle) * p.radius * spread + wobble,
       );
 
       if (isFlame) {

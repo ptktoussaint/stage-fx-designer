@@ -40,7 +40,14 @@ class ClipRecorder {
 
     const mimeType = pickMimeType();
     try {
-      this.recorder = new MediaRecorder(combined, mimeType ? { mimeType } : undefined);
+      // An explicit bitrate keeps the encoder from picking a low default
+      // that has to drop/duplicate frames to keep up with a busy 3D scene —
+      // that showed up as the "lower fps, small stutters" the recorded
+      // clip had compared to the live view.
+      this.recorder = new MediaRecorder(combined, {
+        ...(mimeType ? { mimeType } : {}),
+        videoBitsPerSecond: 8_000_000,
+      });
     } catch {
       return 'Could not start the recorder.';
     }

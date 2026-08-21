@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { useSelectionStore } from '../../stores/selectionStore';
@@ -18,6 +18,7 @@ import {
   toggleTimelineFolderCollapsed,
 } from '../../timeline/trackOrganization';
 import { Icon } from '../common/Icon';
+import { clipRecorder } from '../../engine/clipRecorder';
 import type { TimelineEvent, TimelineTargetType } from '../../types';
 import './TimelinePanel.css';
 
@@ -53,10 +54,139 @@ export function TimelinePanel() {
   const isTimelineCollapsed = useUiStore((s) => s.isTimelineCollapsed);
   const toggleCollapsed = useUiStore((s) => s.toggleTimelineCollapsed);
 
-  const selectedEventId = useSelectionStore((s) => s.selectedTimelineEventId);
+  const selectedEventIds = useSelectionStore((s) => s.selectedTimelineEventIds);
   const setSelectedEventId = useSelectionStore((s) => s.selectTimelineEvent);
+  const setSelectedEventIds = useSelectionStore((s) => s.selectTimelineEvents);
+
+  const viewMode = useProjectStore((s) => s.project.settings.viewMode);
+  const setSettings = useProjectStore((s) => s._setSettings);
+  const projectName = useProjectStore((s) => s.project.name);
+  const isClipRecording = useUiStore((s) => s.isClipRecording);
+  const setClipRecording = useUiStore((s) => s.setClipRecording);
+  const [isAutoRendering, setIsAutoRendering] = useState(false);
 
   const [openFolderMenuKey, setOpenFolderMenuKey] = useState<string | null>(null);
+
+  const tracksRef = useRef<HTMLDivElement | null>(null);
+  /** Hot-path drag math lives in a ref (mutated per pointermove without a
+   * re-render); `boxOverlay` state below mirrors it only for what actually
+   * needs to render — the selection rectangle. */
+  const dragBoxRef = useRef<{ startX: number; startY: number; curX: number; curY: number } | null>(null);
+  const suppressNextClickRef = useRef(false);
+  const [boxOverlay, setBoxOverlay] = useState<{ left: number; top: number; width: number; height: number } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const drag = dragBoxRef.current;
+      if (!drag || !tracksRef.current) return;
+      const rect = tracksRef.current.getBoundingClientRect();
+      drag.curX = e.clientX - rect.left;
+      drag.curY = e.clientY - rect.top;
+      setBoxOverlay({
+        left: Math.min(drag.startX, drag.curX),
+        top: Math.min(drag.startY, drag.curY),
+        width: Math.abs(drag.curX - drag.startX),
+        height: Math.abs(drag.curY - drag.startY),
+      });
+    };
+    const onUp = () => {
+      const drag = dragBoxRef.current;
+      if (!drag || !tracksRef.current) return;
+      const moved = Math.abs(drag.curX - drag.startX) > 4 || Math.abs(drag.curY - drag.startY) > 4;
+      if (moved) {
+        const boxLeft = Math.min(drag.startX, drag.curX);
+        const boxRight = Math.max(drag.startX, drag.curX);
+        const boxTop = Math.min(drag.startY, drag.curY);
+        const boxBottom = Math.max(drag.startY, drag.curY);
+        const containerRect = tracksRef.current.getBoundingClientRect();
+        const matched: string[] = [];
+        tracksRef.current.querySelectorAll<HTMLElement>('[data-event-id]').forEach((el) => {
+          const r = el.getBoundingClientRect();
+          const elLeft = r.left - containerRect.left;
+          const elRight = r.right - containerRect.left;
+          const elTop = r.top - containerRect.top;
+          const elBottom = r.bottom - containerRect.top;
+          if (elLeft < boxRight && elRight > boxLeft && elTop < boxBottom && elBottom > boxTop) {
+            const id = el.dataset.eventId;
+            if (id) matched.push(id);
+          }
+        });
+        setSelectedEventIds(matched);
+        suppressNextClickRef.current = true;
+      }
+      dragBoxRef.current = null;
+      setBoxOverlay(null);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [setSelectedEventIds]);
+
+  const handleTracksPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.timeline-event') || target.closest('.timeline-track__label')) return;
+    if (!tracksRef.current) return;
+    const rect = tracksRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    dragBoxRef.current = { startX: x, startY: y, curX: x, curY: y };
+    setBoxOverlay({ left: x, top: y, width: 0, height: 0 });
+  };
+
+  /**
+   * Plays the whole show start-to-finish while recording the 3D view, so
+   * getting a video doesn't require manually hitting Record then Play then
+   * remembering to Stop at the right moment. Reuses the same clipRecorder
+   * as the manual "Record Clip" button — this is just an orchestrated
+   * play+record+auto-stop around it.
+   */
+  const handleAutoRenderShow = async () => {
+    if (isClipRecording || isAutoRendering) return;
+    const { trimStart, trimEnd, duration } = audio;
+    const lastEventEnd = events.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
+    // Trim end wins if set; otherwise the loaded track's length; otherwise
+    // pad past the last cue so its effect has time to visually finish.
+    const targetEnd = trimEnd ?? duration ?? (lastEventEnd > 0 ? lastEventEnd + 3 : 0);
+    if (targetEnd <= trimStart) {
+      window.alert('Nothing to render yet — import audio or add timeline cues first.');
+      return;
+    }
+
+    setIsAutoRendering(true);
+    if (viewMode !== '3D') {
+      setSettings({ viewMode: '3D' });
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    usePlaybackStore.getState().seek(trimStart);
+
+    const error = clipRecorder.start();
+    if (error) {
+      window.alert(error);
+      setIsAutoRendering(false);
+      return;
+    }
+    setClipRecording(true);
+    usePlaybackStore.getState().play();
+
+    let finished = false;
+    const finish = (state: { isPlaying: boolean }) => {
+      if (finished) return;
+      finished = true;
+      unsubscribe();
+      if (state.isPlaying) usePlaybackStore.getState().stop();
+      setClipRecording(false);
+      setIsAutoRendering(false);
+      void clipRecorder.stop(projectName);
+    };
+    const unsubscribe = usePlaybackStore.subscribe((state) => {
+      if (state.currentTime >= targetEnd || !state.isPlaying) finish(state);
+    });
+  };
 
   const durationSeconds = useMemo(() => {
     const lastEventEnd = events.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
@@ -105,7 +235,7 @@ export function TimelinePanel() {
         targetId={targetId}
         events={eventsByKey.get(key) ?? []}
         pxPerSecond={PX_PER_SECOND}
-        selectedEventId={selectedEventId}
+        selectedEventIds={selectedEventIds}
         onSelectEvent={setSelectedEventId}
         trimStart={audio.trimStart}
         trimEnd={audio.trimEnd}
@@ -145,10 +275,31 @@ export function TimelinePanel() {
             if (name && name.trim()) addTimelineFolder(name.trim());
           }}
         />
+        <IconButton
+          icon="auto-render"
+          label={
+            isAutoRendering
+              ? 'Rendering… (plays the whole show and saves it as a video automatically)'
+              : 'Auto-Render Full Show to Video (plays it start-to-finish and saves a .webm, no manual Record needed)'
+          }
+          active={isAutoRendering}
+          disabled={isAutoRendering || isClipRecording}
+          onClick={handleAutoRenderShow}
+          className={isAutoRendering ? 'timeline-panel__auto-render-active' : undefined}
+        />
         <AudioImportControl />
         <IconButton icon="chevron-down" label="Collapse Timeline" onClick={toggleCollapsed} />
       </div>
-      <div className="timeline-panel__scroll" onClick={() => setSelectedEventId(null)}>
+      <div
+        className="timeline-panel__scroll"
+        onClick={() => {
+          if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false;
+            return;
+          }
+          setSelectedEventId(null);
+        }}
+      >
         <div
           className="timeline-panel__content"
           style={{ width: TRACK_LABEL_WIDTH + durationSeconds * PX_PER_SECOND }}
@@ -175,7 +326,11 @@ export function TimelinePanel() {
               </div>
             )}
           </div>
-          <div className="timeline-panel__tracks">
+          <div
+            className="timeline-panel__tracks"
+            ref={tracksRef}
+            onPointerDown={handleTracksPointerDown}
+          >
             {ungroupedKeys.map(renderTrack)}
 
             {folders.map((folder) => {
@@ -199,6 +354,7 @@ export function TimelinePanel() {
               className="timeline-panel__playhead-line"
               style={{ left: TRACK_LABEL_WIDTH + currentTime * PX_PER_SECOND }}
             />
+            {boxOverlay && <div className="timeline-panel__box-select" style={boxOverlay} />}
           </div>
         </div>
       </div>
