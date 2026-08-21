@@ -244,6 +244,39 @@ function computeStandardShowCamera(stage: OfflineRenderOptions['stage']): {
 }
 
 /**
+ * VP9 (the codec used until now) is noticeably better at compressing a
+ * given bitrate down, but that comes at a real CPU cost: without a hardware
+ * encoder (most machines don't have one for VP9 specifically — hardware
+ * H.264 is far more common), software VP9 encoding is slow enough that an
+ * 11-minute show could take 10-15 minutes to render — nowhere near the
+ * "instant" this feature is supposed to be, even with every other fix in
+ * place. VP8 has far fewer prediction modes and no advanced coding tools,
+ * so libvpx encodes it several times faster than VP9 in software, at a
+ * real but acceptable quality cost for what this render is for: reviewing
+ * and auditioning a show, not producing a final broadcast master. Only
+ * fall back to VP9 if the browser genuinely can't encode VP8 at all —
+ * essentially never, since VP8 support is close to universal.
+ */
+async function pickVideoCodec(
+  width: number,
+  height: number,
+): Promise<{ muxerCodec: string; webCodecsCodec: string }> {
+  try {
+    const support = await VideoEncoder.isConfigSupported({
+      codec: 'vp8',
+      width,
+      height,
+      bitrate: VIDEO_BITRATE,
+      framerate: FPS,
+    });
+    if (support.supported) return { muxerCodec: 'V_VP8', webCodecsCodec: 'vp8' };
+  } catch {
+    // Falls through to VP9 below.
+  }
+  return { muxerCodec: 'V_VP9', webCodecsCodec: 'vp09.00.10.08' };
+}
+
+/**
  * Renders the show to a .webm file without playing it in real time: drives
  * the live 3D canvas with a virtual clock (react-three-fiber's frameloop
  *="never" + advance()) so a frame only takes as long as it takes to render
@@ -281,10 +314,12 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
   let previousCamera: { position: [number, number, number]; target: [number, number, number] } | null = null;
   const forceYield = createYieldGate();
 
+  const videoCodec = await pickVideoCodec(width, height);
+
   try {
     const muxer = new Muxer({
       target: output.target,
-      video: { codec: 'V_VP9', width, height, frameRate: FPS },
+      video: { codec: videoCodec.muxerCodec, width, height, frameRate: FPS },
       audio: hasAudio
         ? { codec: 'A_OPUS', numberOfChannels: decodedAudio.numberOfChannels, sampleRate: decodedAudio.sampleRate }
         : undefined,
@@ -296,24 +331,23 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       error: (e) => console.error('Offline render: video encoder error', e),
     });
     videoEncoder.configure({
-      codec: 'vp09.00.10.08',
+      codec: videoCodec.webCodecsCodec,
       width,
       height,
       bitrate: VIDEO_BITRATE,
       framerate: FPS,
       // 'quality' mode is dramatically slower to encode (it's tuned for
-      // offline transcoding where time doesn't matter) — for VP9 software
-      // encode that was often slower than real playback, which is exactly
+      // offline transcoding where time doesn't matter) — that's exactly
       // backwards for a feature whose whole point is not waiting out the
-      // show. 'realtime' is the mode built for fast, continuous encoding;
-      // at this bitrate the quality difference isn't visible.
+      // show. 'realtime' is the mode built for fast, continuous encoding.
       latencyMode: 'realtime',
       // NOT 'prefer-hardware': despite being documented as advisory, some
       // browser/GPU combinations (confirmed in testing) throw a hard
       // "Encoder creation error" instead of falling back to software when no
-      // hardware VP9 encoder is available — which would break the entire
-      // export for those users. 'no-preference' lets the browser pick
-      // whichever path actually works, hardware included where it exists.
+      // hardware encoder is available for this codec — which would break
+      // the entire export for those users. 'no-preference' lets the browser
+      // pick whichever path actually works, hardware included where it
+      // exists.
       hardwareAcceleration: 'no-preference',
     });
 
