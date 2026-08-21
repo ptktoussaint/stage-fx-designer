@@ -34,8 +34,61 @@ function triggerDownload(blob: Blob, fileName: string): void {
   URL.revokeObjectURL(url);
 }
 
+const MAX_PENDING_FILE_WRITES = 3;
+const FILE_WRITE_CHUNK_SIZE = 2 * 1024 * 1024; // 2 MiB, vs. webm-muxer's 16 MiB default
+
+/**
+ * webm-muxer's own disk writer never awaits its `stream.write()` calls — it
+ * fires each one off and moves on to the next chunk as soon as it has one,
+ * with no regard for whether the previous write actually finished. Its
+ * internal buffer cap only limits how much UNFLUSHED data it holds before
+ * starting a write; it does nothing to limit how many WRITES ARE ALREADY IN
+ * FLIGHT. Normally the disk keeps up and this is invisible. But this
+ * render's whole point is to blast through frames far faster than real
+ * time — if the encoder can produce data faster than the disk can actually
+ * write it, writes queue up faster than they drain, and every one of those
+ * pending writes holds its own chunk of encoded data in memory. That's a
+ * second, independent way to exhaust memory, on top of the "buffer the
+ * whole file before writing anything" one already fixed — and the one
+ * still happening even after switching to disk streaming.
+ *
+ * This wraps the real stream so the render loop can see how many writes are
+ * still outstanding and pause until the disk catches up, the same way it
+ * already pauses when the video encoder's own internal queue backs up.
+ */
+class TrackedWritable {
+  pendingWrites = 0;
+  private readonly real: FileSystemWritableFileStream;
+
+  // Every method below is an instance field (an own property of `this`),
+  // NOT a class-prototype method. That distinction matters here: this
+  // instance's prototype gets swapped below to satisfy webm-muxer's
+  // `instanceof FileSystemWritableFileStream` check, and a prototype-method
+  // `write(...)` would have lived on TrackedWritable.prototype — exactly
+  // the link that swap severs, leaving lookups fall through to the *real*
+  // FileSystemWritableFileStream.prototype.write instead, which throws
+  // "Illegal invocation" on an instance lacking its native internal state.
+  // Own instance properties always win over whatever the prototype is, so
+  // defining them this way survives the swap.
+  write = (data: FileSystemWriteChunkType): Promise<void> => {
+    this.pendingWrites++;
+    return this.real.write(data).finally(() => {
+      this.pendingWrites--;
+    });
+  };
+  close = (): Promise<void> => this.real.close();
+  abort = (reason?: unknown): Promise<void> => this.real.abort(reason);
+  seek = (position: number): Promise<void> => this.real.seek(position);
+  truncate = (size: number): Promise<void> => this.real.truncate(size);
+
+  constructor(real: FileSystemWritableFileStream) {
+    this.real = real;
+    Object.setPrototypeOf(this, FileSystemWritableFileStream.prototype);
+  }
+}
+
 type OutputTarget =
-  | { kind: 'file'; stream: FileSystemWritableFileStream; target: FileSystemWritableFileStreamTarget }
+  | { kind: 'file'; stream: TrackedWritable; target: FileSystemWritableFileStreamTarget }
   | { kind: 'buffer'; target: ArrayBufferTarget }
   | { kind: 'cancelled' };
 
@@ -60,17 +113,40 @@ async function pickOutputTarget(fileNameBase: string): Promise<OutputTarget> {
       suggestedName: `${fileNameBase}.webm`,
       types: [{ description: 'Vídeo WebM', accept: { 'video/webm': ['.webm'] } }],
     });
-    const stream = await handle.createWritable();
-    return { kind: 'file', stream, target: new FileSystemWritableFileStreamTarget(stream) };
+    const stream = new TrackedWritable(await handle.createWritable());
+    // TrackedWritable satisfies webm-muxer's runtime `instanceof
+    // FileSystemWritableFileStream` check (see its constructor) but not
+    // TypeScript's structural type (it doesn't implement locked/getWriter,
+    // which webm-muxer never calls) — safe to assert past that here.
+    const target = new FileSystemWritableFileStreamTarget(stream as unknown as FileSystemWritableFileStream, {
+      chunkSize: FILE_WRITE_CHUNK_SIZE,
+    });
+    return { kind: 'file', stream, target };
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return { kind: 'cancelled' };
     return { kind: 'buffer', target: new ArrayBufferTarget() };
   }
 }
 
+/** Pauses until both the encoder's own queue and (when writing straight to
+ * disk) the number of in-flight file writes have drained enough to keep
+ * memory bounded, no matter how much faster than the disk this loop runs. */
+async function waitForBackpressure(encoder: VideoEncoder | AudioEncoder, output: OutputTarget): Promise<void> {
+  while (encoder.encodeQueueSize > 6 || (output.kind === 'file' && output.stream.pendingWrites > MAX_PENDING_FILE_WRITES)) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 /** Feeds an AudioBuffer's PCM samples straight into an AudioEncoder — no
- * real-time playback involved, so this runs as fast as the encoder allows. */
-function encodeAudioBuffer(buffer: AudioBuffer, startTime: number, endTime: number, encoder: AudioEncoder): void {
+ * real-time playback involved, so this runs as fast as the encoder (and,
+ * where writing straight to disk, the disk itself) allows. */
+async function encodeAudioBuffer(
+  buffer: AudioBuffer,
+  startTime: number,
+  endTime: number,
+  encoder: AudioEncoder,
+  output: OutputTarget,
+): Promise<void> {
   const sampleRate = buffer.sampleRate;
   const startSample = Math.max(0, Math.floor(startTime * sampleRate));
   const endSample = Math.min(buffer.length, Math.ceil(endTime * sampleRate));
@@ -92,6 +168,7 @@ function encodeAudioBuffer(buffer: AudioBuffer, startTime: number, endTime: numb
     });
     encoder.encode(audioData);
     audioData.close();
+    await waitForBackpressure(encoder, output);
   }
 }
 
@@ -252,14 +329,12 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
       frame.close();
 
-      if (videoEncoder.encodeQueueSize > 6) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
+      await waitForBackpressure(videoEncoder, output);
       options.onProgress?.((i + 1) / frameCount);
     }
 
     if (hasAudio && audioEncoder) {
-      encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder);
+      await encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder, output);
     }
 
     await videoEncoder.flush();
