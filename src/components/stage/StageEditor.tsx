@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useUiStore } from '../../stores/uiStore';
 import { IconButton } from '../common/IconButton';
@@ -19,8 +20,28 @@ export function StageEditor() {
   // instead, like a browser download notification.
   const isAutoRendering = useUiStore((s) => s.isAutoRendering);
 
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Tracks the *browser's* fullscreen state rather than our own click — the
+  // only way to also catch the user pressing Esc (or any other way out)
+  // that doesn't go through our button.
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(document.fullscreenElement === containerRef.current);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      void containerRef.current?.requestFullscreen();
+    }
+  };
+
   return (
-    <div className="stage-editor">
+    <div className="stage-editor" ref={containerRef}>
       <div className="stage-editor__toolbar">
         <IconButton
           icon="cursor"
@@ -46,6 +67,13 @@ export function StageEditor() {
           label={snapEnabled ? 'Desativar Encaixe' : 'Ativar Encaixe'}
           active={snapEnabled}
           onClick={() => setSettings({ snap: { ...snap, enabled: !snapEnabled } })}
+        />
+        <div className="stage-editor__toolbar-divider" />
+        <IconButton
+          icon={isFullscreen ? 'fullscreen-exit' : 'fullscreen'}
+          label={isFullscreen ? 'Sair da Tela Cheia (Esc)' : 'Palco em Tela Cheia'}
+          active={isFullscreen}
+          onClick={toggleFullscreen}
         />
       </div>
       <div className="stage-editor__surface">

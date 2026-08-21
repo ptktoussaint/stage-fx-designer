@@ -52,7 +52,9 @@ export type IconName =
   | 'shape-cone'
   | 'shape-inverted-cone'
   | 'auto-render'
-  | 'drag-handle';
+  | 'drag-handle'
+  | 'fullscreen'
+  | 'fullscreen-exit';
 
 const PATHS: Record<IconName, string> = {
   flame: 'M12 2c1 3-3 4-3 7a3 3 0 1 0 6 0c0-1-.5-2-1-2 1 3-1 4-2 4a2 2 0 0 1-2-2c0-2 2-3 2-7Z',
@@ -104,6 +106,8 @@ const PATHS: Record<IconName, string> = {
   'shape-inverted-cone': 'M12 4 4 20 M12 4 20 20',
   'auto-render': 'M4 3h16v12H4z M9 7v4l5-2z M6 19h12 M9 22h6',
   'drag-handle': 'M9 6h0 M15 6h0 M9 12h0 M15 12h0 M9 18h0 M15 18h0',
+  fullscreen: 'M4 9V5a1 1 0 0 1 1-1h4 M15 4h4a1 1 0 0 1 1 1v4 M20 15v4a1 1 0 0 1-1 1h-4 M9 20H5a1 1 0 0 1-1-1v-4',
+  'fullscreen-exit': 'M9 4v4a1 1 0 0 1-1 1H4 M15 4v4a1 1 0 0 0 1 1h4 M20 15h-4a1 1 0 0 0-1 1v4 M4 15h4a1 1 0 0 1 1 1v4',
 };
 
 interface IconProps {

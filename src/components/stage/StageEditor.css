@@ -6,6 +6,12 @@
   overflow: hidden;
 }
 
+/* Fullscreen mode has no surrounding panel to inherit a background from —
+   without this the browser's default fullscreen backdrop shows through. */
+.stage-editor:fullscreen {
+  background: var(--bg-app);
+}
+
 .stage-editor__toolbar {
   position: absolute;
   top: 8px;
