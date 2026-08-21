@@ -172,6 +172,20 @@ async function waitForBackpressure(encoder: VideoEncoder | AudioEncoder, output:
   while (encoder.encodeQueueSize > 6 || (output.kind === 'file' && output.stream.pendingWrites > MAX_PENDING_FILE_WRITES)) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
+  // The User Timing API's mark()/measure() entries have no automatic size
+  // limit or pruning — unlike resource-timing entries, they accumulate in
+  // the page's performance timeline forever unless explicitly cleared.
+  // Confirmed via a real user's heap snapshot comparison during an actual
+  // 11-minute render: "PerformanceMeasure" objects were the overwhelming
+  // majority of a 4.4MB/s heap growth (913,542 new instances, +110MB —
+  // dwarfing every other object type combined). Something on the page
+  // (most likely React's own dev-mode scheduler instrumentation, given how
+  // closely the rate tracked this loop's own iteration count) creates a lot
+  // of these per frame; clearing them here every frame costs nothing
+  // measurable and closes off that entire growth category regardless of
+  // what's populating it.
+  performance.clearMarks();
+  performance.clearMeasures();
 }
 
 /**
