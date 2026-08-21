@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useProjectStore, createEmptyProject } from '../../stores/projectStore';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { useHistoryStore } from '../../stores/historyStore';
@@ -27,7 +27,6 @@ export function TopToolbar() {
   const redoLabel = useHistoryStore((s) => s.redoStack[s.redoStack.length - 1]?.label);
 
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
-  const currentTime = usePlaybackStore((s) => s.currentTime);
   const togglePlay = usePlaybackStore((s) => s.togglePlay);
   const stop = usePlaybackStore((s) => s.stop);
   const trimStart = useProjectStore((s) => s.project.audio.trimStart);
@@ -46,6 +45,19 @@ export function TopToolbar() {
   const isPlaylistOpen = useUiStore((s) => s.isPlaylistOpen);
   const setPlaylistOpen = useUiStore((s) => s.setPlaylistOpen);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Live time readout, written straight to the DOM on every playbackStore
+  // tick instead of through React state — a plain currentTime subscription
+  // here re-rendered this whole toolbar (many icon buttons, undo/redo
+  // labels, all of it) 60x/sec during playback. See TimelineWaveform for
+  // the fuller rationale; same technique.
+  const timeRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const update = (currentTime: number) => {
+      if (timeRef.current) timeRef.current.textContent = formatTime(Math.max(0, currentTime - trimStart));
+    };
+    update(usePlaybackStore.getState().currentTime);
+    return usePlaybackStore.subscribe((state) => update(state.currentTime));
+  }, [trimStart]);
 
   const handleToggleClipRecording = async () => {
     if (isClipRecording) {
@@ -53,17 +65,20 @@ export function TopToolbar() {
       await clipRecorder.stop(project.name);
       return;
     }
-    if (viewMode !== '3D') {
-      setSettings({ viewMode: '3D' });
-      // Give the 3D <canvas> a moment to actually mount before capturing it.
-      await new Promise((resolve) => setTimeout(resolve, 150));
-    }
+    if (viewMode !== '3D') setSettings({ viewMode: '3D' });
+    // Recording needs a WebGL context created with preserveDrawingBuffer
+    // (captureStream reads the canvas on its own timer, so the buffer has
+    // to survive between frames) — that's off by default for performance,
+    // so flipping isClipRecording on remounts the <canvas> with it enabled.
+    // Give it a moment to actually mount before capturing it (same wait
+    // covers the view-mode switch above too).
+    setClipRecording(true);
+    await new Promise((resolve) => setTimeout(resolve, 150));
     const error = clipRecorder.start();
     if (error) {
       window.alert(error);
-      return;
+      setClipRecording(false);
     }
-    setClipRecording(true);
   };
 
   const handleNew = () => {
@@ -161,7 +176,9 @@ export function TopToolbar() {
       <div className="top-toolbar__spacer" />
 
       <div className="top-toolbar__group top-toolbar__transport">
-        <span className="top-toolbar__time">{formatTime(Math.max(0, currentTime - trimStart))}</span>
+        <span ref={timeRef} className="top-toolbar__time">
+          {formatTime(Math.max(0, usePlaybackStore.getState().currentTime - trimStart))}
+        </span>
         <IconButton
           icon={isPlaying ? 'stop' : 'play'}
           label={isPlaying ? 'Parar' : 'Reproduzir'}

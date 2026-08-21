@@ -94,6 +94,12 @@
   opacity: 0.9;
 }
 
+.timeline-waveform__unplayed-scrim {
+  fill: var(--bg-app);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 .timeline-waveform__trim-mask {
   fill: var(--bg-app);
   opacity: 0.75;

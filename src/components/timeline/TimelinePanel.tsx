@@ -20,6 +20,8 @@ import {
 import { Icon } from '../common/Icon';
 import { clipRecorder } from '../../engine/clipRecorder';
 import { isOfflineRenderSupported, renderShowOffline } from '../../engine/offlineShowRenderer';
+import { getDeviceDefinition } from '../../devices/registry';
+import { CATEGORY_COLOR_HEX } from '../../devices/categoryColors';
 import type { TimelineEvent, TimelineTargetType } from '../../types';
 import './TimelinePanel.css';
 
@@ -50,7 +52,6 @@ export function TimelinePanel() {
   const trackOrder = useProjectStore((s) => s.project.timeline.trackOrder);
   const trackFolder = useProjectStore((s) => s.project.timeline.trackFolder);
   const audio = useProjectStore((s) => s.project.audio);
-  const currentTime = usePlaybackStore((s) => s.currentTime);
   const seek = usePlaybackStore((s) => s.seek);
   const isTimelineCollapsed = useUiStore((s) => s.isTimelineCollapsed);
   const toggleCollapsed = useUiStore((s) => s.toggleTimelineCollapsed);
@@ -187,13 +188,18 @@ export function TimelinePanel() {
 
     // Fallback: play + capture in real time (older browser without WebCodecs).
     usePlaybackStore.getState().seek(trimStart);
+    // Same canvas-remount-for-preserveDrawingBuffer wait as the manual
+    // Record Clip button (see TopToolbar.tsx) — isClipRecording must flip
+    // before clipRecorder.start() so it captures the right canvas.
+    setClipRecording(true);
+    await new Promise((resolve) => setTimeout(resolve, 150));
     const error = clipRecorder.start();
     if (error) {
       window.alert(error);
+      setClipRecording(false);
       setIsAutoRendering(false);
       return;
     }
-    setClipRecording(true);
     usePlaybackStore.getState().play();
 
     let finished = false;
@@ -211,10 +217,17 @@ export function TimelinePanel() {
     });
   };
 
+  // No longer depends on currentTime — that used to force this (and every
+  // child below it: ruler, waveform, every track) to recompute and
+  // re-render on every animation frame during playback, purely so the
+  // ruler could grow if the playhead ever ran past the nominal duration.
+  // That's a rare edge case (no audio, playing past every cue); the fixed
+  // padding below covers it in practice, and the scroll container clips
+  // gracefully in the rest.
   const durationSeconds = useMemo(() => {
     const lastEventEnd = events.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
-    return Math.max(60, audio.duration ?? 0, lastEventEnd + 15, currentTime + 15);
-  }, [events, currentTime, audio.duration]);
+    return Math.max(60, audio.duration ?? 0, lastEventEnd + 15);
+  }, [events, audio.duration]);
 
   const resolvedOrder = useMemo(
     () =>
@@ -240,7 +253,11 @@ export function TimelinePanel() {
   const labelByKey = useMemo(() => {
     const map = new Map<string, { label: string; color: string }>();
     groups.forEach((g) => map.set(groupTrackKey(g.id), { label: g.name, color: g.color }));
-    devices.forEach((d) => map.set(deviceTrackKey(d.id), { label: d.name, color: 'var(--accent)' }));
+    devices.forEach((d) => {
+      const definition = getDeviceDefinition(d.definitionId);
+      const color = d.color ?? (definition ? CATEGORY_COLOR_HEX[definition.category] : 'var(--accent)');
+      map.set(deviceTrackKey(d.id), { label: d.name, color });
+    });
     return map;
   }, [groups, devices]);
 
@@ -273,11 +290,33 @@ export function TimelinePanel() {
 
   const ungroupedKeys = resolvedOrder.filter((key) => !trackFolder[key]);
 
+  // Live playhead position, written straight to the DOM on every
+  // playbackStore tick instead of through React state — see
+  // TimelineWaveform/TimelineRuler for the full rationale. Only one of
+  // these two refs is ever attached at a time (collapsed vs. expanded
+  // view), the other stays null and is skipped.
+  const collapsedTimeRef = useRef<HTMLSpanElement>(null);
+  const panelPlayheadRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const update = (currentTime: number) => {
+      if (collapsedTimeRef.current) {
+        collapsedTimeRef.current.textContent = formatTime(Math.max(0, currentTime - audio.trimStart));
+      }
+      if (panelPlayheadRef.current) {
+        panelPlayheadRef.current.style.left = `${TRACK_LABEL_WIDTH + currentTime * PX_PER_SECOND}px`;
+      }
+    };
+    update(usePlaybackStore.getState().currentTime);
+    return usePlaybackStore.subscribe((state) => update(state.currentTime));
+  }, [audio.trimStart]);
+
   if (isTimelineCollapsed) {
     return (
       <div className="timeline-panel timeline-panel--collapsed">
         <span>TIMELINE</span>
-        <span className="timeline-panel__time">{formatTime(Math.max(0, currentTime - audio.trimStart))}</span>
+        <span ref={collapsedTimeRef} className="timeline-panel__time">
+          {formatTime(Math.max(0, usePlaybackStore.getState().currentTime - audio.trimStart))}
+        </span>
         <IconButton icon="chevron-right" label="Expandir Timeline" onClick={toggleCollapsed} className="timeline-panel__collapse-toggle" />
       </div>
     );
@@ -331,7 +370,6 @@ export function TimelinePanel() {
             <TimelineRuler
               pxPerSecond={PX_PER_SECOND}
               durationSeconds={durationSeconds}
-              currentTime={currentTime}
               onScrub={seek}
               trimStart={audio.trimStart}
             />
@@ -341,7 +379,6 @@ export function TimelinePanel() {
                   peaks={audio.waveformPeaks}
                   pxPerSecond={PX_PER_SECOND}
                   height={44}
-                  currentTime={currentTime}
                   trimStart={audio.trimStart}
                   trimEnd={audio.trimEnd}
                 />
@@ -374,8 +411,9 @@ export function TimelinePanel() {
               <div className="timeline-panel__empty">Adicione efeitos da Biblioteca de Efeitos para criar faixas na timeline.</div>
             )}
             <div
+              ref={panelPlayheadRef}
               className="timeline-panel__playhead-line"
-              style={{ left: TRACK_LABEL_WIDTH + currentTime * PX_PER_SECOND }}
+              style={{ left: TRACK_LABEL_WIDTH + usePlaybackStore.getState().currentTime * PX_PER_SECOND }}
             />
             {boxOverlay && <div className="timeline-panel__box-select" style={boxOverlay} />}
           </div>

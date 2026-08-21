@@ -20,7 +20,7 @@ const DARK_TRIM = '#1c1d20';
  * half-torus arc, standing on its two ends. */
 function LoopHandle({ position, width }: { position: [number, number, number]; width: number }) {
   return (
-    <mesh position={position} rotation={[0, 0, 0]} castShadow>
+    <mesh position={position} rotation={[0, 0, 0]}>
       <torusGeometry args={[width / 2, 0.008, 6, 16, Math.PI]} />
       <meshStandardMaterial color={CHROME} metalness={0.6} roughness={0.35} />
     </mesh>
@@ -32,17 +32,17 @@ function LoopHandle({ position, width }: { position: [number, number, number]; w
 function FireMachine({ color }: { color: Color }) {
   return (
     <group>
-      <mesh position={[0, 0.11, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.11, 0]}>
         <boxGeometry args={[0.34, 0.22, 0.32]} />
         <meshStandardMaterial color={color} roughness={0.8} />
       </mesh>
       <LoopHandle position={[-0.1, 0.24, 0]} width={0.1} />
       <LoopHandle position={[0.1, 0.24, 0]} width={0.1} />
-      <mesh position={[0, 0.24, 0]} castShadow>
+      <mesh position={[0, 0.24, 0]}>
         <cylinderGeometry args={[0.07, 0.08, 0.05, 16]} />
         <meshStandardMaterial color={DARK_TRIM} roughness={0.5} />
       </mesh>
-      <mesh position={[0, 0.275, 0]} castShadow>
+      <mesh position={[0, 0.275, 0]}>
         <cylinderGeometry args={[0.045, 0.05, 0.03, 16]} />
         <meshStandardMaterial color="#2a2a2e" metalness={0.4} roughness={0.4} />
       </mesh>
@@ -55,23 +55,23 @@ function FireMachine({ color }: { color: Color }) {
 function Co2Jet({ color }: { color: Color }) {
   return (
     <group>
-      <mesh position={[0, 0.01, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.01, 0]}>
         <boxGeometry args={[0.22, 0.02, 0.16]} />
         <meshStandardMaterial color={DARK_TRIM} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.13, 0]} castShadow>
+      <mesh position={[0, 0.13, 0]}>
         <boxGeometry args={[0.11, 0.22, 0.11]} />
         <meshStandardMaterial color={color} roughness={0.7} />
       </mesh>
-      <mesh position={[-0.065, 0.15, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh position={[-0.065, 0.15, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.018, 0.018, 0.02, 10]} />
         <meshStandardMaterial color={CHROME} metalness={0.7} roughness={0.3} />
       </mesh>
-      <mesh position={[0.065, 0.15, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh position={[0.065, 0.15, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.018, 0.018, 0.02, 10]} />
         <meshStandardMaterial color={CHROME} metalness={0.7} roughness={0.3} />
       </mesh>
-      <mesh position={[0, 0.42, 0]} castShadow>
+      <mesh position={[0, 0.42, 0]}>
         <cylinderGeometry args={[0.045, 0.05, 0.42, 14]} />
         <meshStandardMaterial color="#0e0e10" roughness={0.6} />
       </mesh>
@@ -84,20 +84,20 @@ function Co2Jet({ color }: { color: Color }) {
 function SparkMachine({ color }: { color: Color }) {
   return (
     <group>
-      <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.13, 0]}>
         <boxGeometry args={[0.32, 0.26, 0.3]} />
         <meshStandardMaterial color={color} roughness={0.75} />
       </mesh>
-      <mesh position={[0, 0.26, -0.09]} castShadow>
+      <mesh position={[0, 0.26, -0.09]}>
         <boxGeometry args={[0.26, 0.005, 0.1]} />
         <meshStandardMaterial color={DARK_TRIM} roughness={0.4} />
       </mesh>
       <LoopHandle position={[0, 0.29, 0.02]} width={0.14} />
-      <mesh position={[0, 0.26, 0.05]} castShadow>
+      <mesh position={[0, 0.26, 0.05]}>
         <cylinderGeometry args={[0.06, 0.06, 0.03, 16]} />
         <meshStandardMaterial color={DARK_TRIM} roughness={0.5} />
       </mesh>
-      <mesh position={[0, 0.285, 0.05]} castShadow>
+      <mesh position={[0, 0.285, 0.05]}>
         <cylinderGeometry args={[0.04, 0.04, 0.02, 16]} />
         <meshStandardMaterial color="#2a2a2e" metalness={0.4} roughness={0.4} />
       </mesh>
@@ -109,7 +109,7 @@ function SparkMachine({ color }: { color: Color }) {
  * hexagonal-profile cylinder standing upright, like the reference photo. */
 function PyroTube({ color }: { color: Color }) {
   return (
-    <mesh position={[0, 0.14, 0]} castShadow receiveShadow>
+    <mesh position={[0, 0.14, 0]}>
       <cylinderGeometry args={[0.055, 0.055, 0.28, 6]} />
       <meshStandardMaterial color={color} roughness={0.55} />
     </mesh>
@@ -122,11 +122,11 @@ function PyroTube({ color }: { color: Color }) {
 function AtmosphericMachine({ color }: { color: Color }) {
   return (
     <group>
-      <mesh position={[0, 0.09, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.09, 0]}>
         <boxGeometry args={[0.36, 0.18, 0.2]} />
         <meshStandardMaterial color={color} roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.09, 0.11]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+      <mesh position={[0, 0.09, 0.11]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.035, 0.035, 0.02, 16]} />
         <meshStandardMaterial color={DARK_TRIM} roughness={0.5} />
       </mesh>
@@ -139,11 +139,11 @@ function AtmosphericMachine({ color }: { color: Color }) {
 function ConfettiCannon({ color }: { color: Color }) {
   return (
     <group>
-      <mesh position={[0, 0.05, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.05, 0]}>
         <boxGeometry args={[0.16, 0.1, 0.16]} />
         <meshStandardMaterial color={DARK_TRIM} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0.18, 0]} rotation={[-Math.PI / 5, 0, 0]} castShadow>
+      <mesh position={[0, 0.18, 0]} rotation={[-Math.PI / 5, 0, 0]}>
         <cylinderGeometry args={[0.06, 0.07, 0.32, 14]} />
         <meshStandardMaterial color={color} roughness={0.6} />
       </mesh>

@@ -1,9 +1,10 @@
+import { useEffect, useMemo, useRef } from 'react';
+import { usePlaybackStore } from '../../stores/playbackStore';
 import { formatTime } from '../../utils/time';
 
 interface TimelineRulerProps {
   pxPerSecond: number;
   durationSeconds: number;
-  currentTime: number;
   onScrub: (time: number) => void;
   /**
    * Everything here is still positioned in absolute file time (unchanged —
@@ -15,16 +16,37 @@ interface TimelineRulerProps {
   trimStart: number;
 }
 
-export function TimelineRuler({ pxPerSecond, durationSeconds, currentTime, onScrub, trimStart }: TimelineRulerProps) {
+/**
+ * Ticks are memoized from durationSeconds/pxPerSecond/trimStart alone — the
+ * playhead marker no longer comes in as a `currentTime` prop (which used to
+ * force this whole ruler, ticks included, to re-render every animation
+ * frame during playback); instead its position is written straight to the
+ * DOM via a ref on every playbackStore tick, same technique as the
+ * waveform's played/unplayed scrim.
+ */
+export function TimelineRuler({ pxPerSecond, durationSeconds, onScrub, trimStart }: TimelineRulerProps) {
   const step = pxPerSecond < 30 ? 5 : pxPerSecond < 80 ? 2 : 1;
-  const ticks: number[] = [];
-  for (let t = 0; t <= durationSeconds; t += step) ticks.push(t);
+  const ticks = useMemo(() => {
+    const list: number[] = [];
+    for (let t = 0; t <= durationSeconds; t += step) list.push(t);
+    return list;
+  }, [durationSeconds, step]);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const time = (e.clientX - rect.left) / pxPerSecond;
     onScrub(Math.max(0, time));
   };
+
+  const playheadRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const update = (currentTime: number) => {
+      const el = playheadRef.current;
+      if (el) el.style.left = `${currentTime * pxPerSecond}px`;
+    };
+    update(usePlaybackStore.getState().currentTime);
+    return usePlaybackStore.subscribe((state) => update(state.currentTime));
+  }, [pxPerSecond]);
 
   return (
     <div className="timeline-ruler" style={{ width: durationSeconds * pxPerSecond }} onClick={handleClick}>
@@ -33,7 +55,7 @@ export function TimelineRuler({ pxPerSecond, durationSeconds, currentTime, onScr
           <span>{formatTime(t - trimStart)}</span>
         </div>
       ))}
-      <div className="timeline-ruler__playhead" style={{ left: currentTime * pxPerSecond }} />
+      <div ref={playheadRef} className="timeline-ruler__playhead" />
     </div>
   );
 }

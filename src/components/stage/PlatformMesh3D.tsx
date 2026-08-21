@@ -36,7 +36,7 @@ export function PlatformMesh3D({ platform, stageHeight, onDragStart }: PlatformM
 
   return (
     <group position={position} rotation={[0, (-platform.rotation.z * Math.PI) / 180, 0]}>
-      <mesh castShadow receiveShadow onPointerDown={handlePointerDown}>
+      <mesh onPointerDown={handlePointerDown}>
         <boxGeometry args={[width, height, depth]} />
         <meshStandardMaterial color={color} roughness={0.7} />
       </mesh>

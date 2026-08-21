@@ -54,7 +54,7 @@ export function EffectCloud({ id, position, color, onDone }: Effect3DProps) {
     <group position={position}>
       {puffs.map((_, i) => (
         <mesh key={i} ref={(el) => { meshRefs.current[i] = el; }}>
-          <sphereGeometry args={[0.5, 10, 10]} />
+          <sphereGeometry args={[0.5, 8, 8]} />
           <meshBasicMaterial color={color} transparent opacity={0} depthWrite={false} />
         </mesh>
       ))}

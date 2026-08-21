@@ -4,6 +4,7 @@ import { Grid, OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useProjectStore } from '../../stores/projectStore';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { useUiStore } from '../../stores/uiStore';
 import { moveDevice, movePlatform, moveFigure } from '../../commands';
 import { snapPosition } from '../../utils/math';
 import type { Vector3 } from '../../types';
@@ -38,8 +39,20 @@ export function StageRenderer3D() {
   const snap = useProjectStore((s) => s.project.settings.snap);
   const clearSelection = useSelectionStore((s) => s.clear);
 
+  const isClipRecording = useUiStore((s) => s.isClipRecording);
+
   const [dragState, setDragState] = useState<DragState3D | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  // preserveDrawingBuffer (needed only by the manual live "Record Clip"
+  // button's canvas.captureStream() capture — the offline renderer grabs
+  // frames synchronously right after its own render call and never needs
+  // it) can only be set at WebGL context creation, so toggling it means
+  // remounting the Canvas. That would normally reset the camera to its
+  // default framing right when someone starts recording — this ref keeps
+  // the last orbited position/target so the remount can restore it instead.
+  const savedCameraRef = useRef<{ position: [number, number, number]; target: [number, number, number] } | null>(
+    null,
+  );
   // Whether the current drag actually moved anything, tracked outside React
   // state (a ref, not a mutated useState value) so every pointer-move
   // doesn't need to trigger a re-render — the live position update during
@@ -110,16 +123,33 @@ export function StageRenderer3D() {
   return (
     <div className="stage-renderer-3d">
       <Canvas
-        shadows
-        camera={{ position: cameraPosition, fov: 45, near: 0.1, far: 500 }}
+        // Remounts (fresh WebGL context) only when a live recording starts
+        // or ends — preserveDrawingBuffer can only be set at context
+        // creation. Everything else about the scene is unaffected; the
+        // camera position is restored from savedCameraRef below so this
+        // doesn't visibly reset the view.
+        key={isClipRecording ? 'record' : 'live'}
+        camera={{ position: savedCameraRef.current?.position ?? cameraPosition, fov: 45, near: 0.1, far: 500 }}
         onPointerMissed={() => clearSelection()}
-        // preserveDrawingBuffer keeps the last-rendered frame available
-        // between draws — without it, WebGL clears the buffer for
-        // performance right after compositing, so canvas.captureStream()
-        // (used by the clip recorder) can sample a just-cleared/stale
-        // buffer on some frames, which reads as dropped-fps stutter in the
-        // recorded video even though the live view looks smooth.
-        gl={{ preserveDrawingBuffer: true }}
+        // Capped dpr: at 2-3x (common on retina/4K screens) every fragment
+        // shader runs 4-9x more often for no visible gain on a stylized
+        // scene like this one — a major, easy win for frame time.
+        dpr={[1, 1.5]}
+        gl={{
+          // Ask the browser/driver for the discrete/high-performance GPU
+          // instead of whatever it defaults to (often integrated graphics
+          // on laptops with switchable graphics).
+          powerPreference: 'high-performance',
+          // Only the manual live "Record Clip" button needs this (it reads
+          // the canvas via canvas.captureStream() on the browser's own
+          // timer, so it needs the drawing buffer to survive between
+          // frames) — left on unconditionally it costs an extra buffer copy
+          // every frame, always, whether or not anyone is recording. The
+          // offline show renderer (engine/offlineShowRenderer.ts) doesn't
+          // need it at all: it grabs each VideoFrame synchronously right
+          // after its own render call, before anything could clear it.
+          preserveDrawingBuffer: isClipRecording,
+        }}
         // Hands the root state to the offline show renderer (engine/
         // offlineShowRenderer.ts), which drives this same canvas with a
         // virtual clock (frameloop 'never' + advance()) to render a video
@@ -130,7 +160,7 @@ export function StageRenderer3D() {
       >
         <color attach="background" args={['#0c0d0f']} />
         <ambientLight intensity={0.55} />
-        <directionalLight position={[stage.width * 0.4, 12, -stage.depth * 0.3]} intensity={0.9} castShadow />
+        <directionalLight position={[stage.width * 0.4, 12, -stage.depth * 0.3]} intensity={0.9} />
 
         {/* Stage deck: a real riser box of height stage.height, top face at
             y=0 so existing device.position.z=0 still means "resting on the
@@ -138,8 +168,8 @@ export function StageRenderer3D() {
             visual-only elevation. */}
         <mesh
           position={[stage.width / 2, -stage.height / 2, stage.depth / 2]}
-          receiveShadow
-          castShadow
+
+
           onClick={() => clearSelection()}
         >
           <boxGeometry args={[stage.width, stage.height, stage.depth]} />
@@ -150,7 +180,7 @@ export function StageRenderer3D() {
           <mesh
             position={[stage.width / 2, -stage.height, -stage.frontMargin / 2]}
             rotation={[-Math.PI / 2, 0, 0]}
-            receiveShadow
+
             onClick={() => clearSelection()}
           >
             <planeGeometry args={[stage.width, stage.frontMargin]} />
@@ -211,10 +241,19 @@ export function StageRenderer3D() {
 
         <OrbitControls
           ref={controlsRef}
-          target={target}
+          target={savedCameraRef.current?.target ?? target}
           minDistance={2}
           maxDistance={Math.max(stage.width, stage.depth + stage.frontMargin) * 3}
           maxPolarAngle={Math.PI / 2 - 0.02}
+          onChange={() => {
+            const controls = controlsRef.current;
+            if (!controls) return;
+            const cam = controls.object;
+            savedCameraRef.current = {
+              position: [cam.position.x, cam.position.y, cam.position.z],
+              target: [controls.target.x, controls.target.y, controls.target.z],
+            };
+          }}
         />
       </Canvas>
     </div>

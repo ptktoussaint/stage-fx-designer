@@ -23,15 +23,15 @@ function PersonMarker({ heightMeters, color }: { heightMeters: number; color: st
 
   return (
     <group>
-      <mesh position={[0, legHeight + bodyLength / 2, 0]} castShadow>
+      <mesh position={[0, legHeight + bodyLength / 2, 0]}>
         <capsuleGeometry args={[radius, bodyLength, 4, 8]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      <mesh position={[0, legHeight, 0]} castShadow>
+      <mesh position={[0, legHeight, 0]}>
         <cylinderGeometry args={[radius * 0.8, radius * 0.8, legHeight, 8]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      <mesh position={[0, legHeight + bodyLength + headRadius, 0]} castShadow>
+      <mesh position={[0, legHeight + bodyLength + headRadius, 0]}>
         <sphereGeometry args={[headRadius, 12, 12]} />
         <meshStandardMaterial color={color} />
       </mesh>
@@ -55,11 +55,11 @@ function InstrumentMarker({
     case 'figure-guitar':
       return (
         <group>
-          <mesh position={[0, heightMeters * 0.3, 0]} rotation={[0, 0, Math.PI / 10]} castShadow>
+          <mesh position={[0, heightMeters * 0.3, 0]} rotation={[0, 0, Math.PI / 10]}>
             <boxGeometry args={[0.32, 0.42, 0.08]} />
             <meshStandardMaterial color={color} />
           </mesh>
-          <mesh position={[0.02, heightMeters * 0.65, 0]} rotation={[0, 0, Math.PI / 10]} castShadow>
+          <mesh position={[0.02, heightMeters * 0.65, 0]} rotation={[0, 0, Math.PI / 10]}>
             <cylinderGeometry args={[0.02, 0.02, heightMeters * 0.6, 8]} />
             <meshStandardMaterial color="#3a2a1a" />
           </mesh>
@@ -68,19 +68,19 @@ function InstrumentMarker({
     case 'figure-drum-kit':
       return (
         <group>
-          <mesh position={[0, 0.35, 0]} castShadow>
+          <mesh position={[0, 0.35, 0]}>
             <cylinderGeometry args={[0.35, 0.35, 0.5, 16]} />
             <meshStandardMaterial color={color} />
           </mesh>
-          <mesh position={[-0.4, 0.55, -0.2]} castShadow>
+          <mesh position={[-0.4, 0.55, -0.2]}>
             <cylinderGeometry args={[0.18, 0.18, 0.3, 12]} />
             <meshStandardMaterial color={color} />
           </mesh>
-          <mesh position={[0.4, 0.55, -0.2]} castShadow>
+          <mesh position={[0.4, 0.55, -0.2]}>
             <cylinderGeometry args={[0.18, 0.18, 0.3, 12]} />
             <meshStandardMaterial color={color} />
           </mesh>
-          <mesh position={[0, 0.85, -0.5]} rotation={[Math.PI / 2.5, 0, 0]} castShadow>
+          <mesh position={[0, 0.85, -0.5]} rotation={[Math.PI / 2.5, 0, 0]}>
             <cylinderGeometry args={[0.22, 0.22, 0.02, 16]} />
             <meshStandardMaterial color="#e8d9c0" />
           </mesh>
@@ -92,19 +92,19 @@ function InstrumentMarker({
       return (
         <group>
           {/* Table/booth stand */}
-          <mesh position={[0, tableHeight / 2, 0]} castShadow>
+          <mesh position={[0, tableHeight / 2, 0]}>
             <boxGeometry args={[0.8, tableHeight, 0.52]} />
             <meshStandardMaterial color="#141517" />
           </mesh>
           {/* Controller body */}
-          <mesh position={[0, tableHeight + 0.04, 0]} castShadow>
+          <mesh position={[0, tableHeight + 0.04, 0]}>
             <boxGeometry args={[0.75, 0.08, 0.48]} />
             <meshStandardMaterial color={color} />
           </mesh>
           {/* Jog wheel platters (left/right) */}
           {[-0.24, 0.24].map((dx) => (
             <group key={dx} position={[dx, tableHeight + 0.085, 0]}>
-              <mesh castShadow>
+              <mesh>
                 <cylinderGeometry args={[0.16, 0.16, 0.015, 32]} />
                 <meshStandardMaterial color={deckColor} metalness={0.4} roughness={0.35} />
               </mesh>
@@ -115,7 +115,7 @@ function InstrumentMarker({
             </group>
           ))}
           {/* Center mixer strip with small channel faders */}
-          <mesh position={[0, tableHeight + 0.09, 0]} castShadow>
+          <mesh position={[0, tableHeight + 0.09, 0]}>
             <boxGeometry args={[0.18, 0.02, 0.4]} />
             <meshStandardMaterial color={deckColor} />
           </mesh>
@@ -131,12 +131,12 @@ function InstrumentMarker({
     case 'figure-keyboard':
       return (
         <group>
-          <mesh position={[0, heightMeters * 0.85, 0]} castShadow>
+          <mesh position={[0, heightMeters * 0.85, 0]}>
             <boxGeometry args={[1.2, 0.08, 0.4]} />
             <meshStandardMaterial color={color} />
           </mesh>
           {[-0.5, 0.5].map((dx) => (
-            <mesh key={dx} position={[dx, heightMeters * 0.42, 0]} castShadow>
+            <mesh key={dx} position={[dx, heightMeters * 0.42, 0]}>
               <boxGeometry args={[0.06, heightMeters * 0.84, 0.35]} />
               <meshStandardMaterial color="#3a3a3e" />
             </mesh>
@@ -146,11 +146,11 @@ function InstrumentMarker({
     default:
       return (
         <group>
-          <mesh position={[0, heightMeters * 0.5, 0]} castShadow>
+          <mesh position={[0, heightMeters * 0.5, 0]}>
             <cylinderGeometry args={[0.015, 0.015, heightMeters * 0.9, 6]} />
             <meshStandardMaterial color="#3a3a3e" />
           </mesh>
-          <mesh position={[0, heightMeters * 0.95, 0]} castShadow>
+          <mesh position={[0, heightMeters * 0.95, 0]}>
             <sphereGeometry args={[0.05, 10, 10]} />
             <meshStandardMaterial color={color} />
           </mesh>
