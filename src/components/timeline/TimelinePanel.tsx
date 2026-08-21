@@ -65,8 +65,14 @@ export function TimelinePanel() {
   const projectName = useProjectStore((s) => s.project.name);
   const isClipRecording = useUiStore((s) => s.isClipRecording);
   const setClipRecording = useUiStore((s) => s.setClipRecording);
-  const [isAutoRendering, setIsAutoRendering] = useState(false);
-  const [autoRenderProgress, setAutoRenderProgress] = useState(0);
+  // Lives in uiStore (not local state) so StageEditor can hide the stage
+  // view while this is happening — the render loop drives the same visible
+  // canvas at high speed, and without that overlay every effect flashes by
+  // on screen as it fast-forwards through the show.
+  const isAutoRendering = useUiStore((s) => s.isAutoRendering);
+  const setIsAutoRendering = useUiStore((s) => s.setAutoRendering);
+  const autoRenderProgress = useUiStore((s) => s.autoRenderProgress);
+  const setAutoRenderProgress = useUiStore((s) => s.setAutoRenderProgress);
 
   const [openFolderMenuKey, setOpenFolderMenuKey] = useState<string | null>(null);
 
@@ -187,7 +193,14 @@ export function TimelinePanel() {
       return;
     }
 
-    // Fallback: play + capture in real time (older browser without WebCodecs).
+    // Fallback: play + capture in real time (older browser without
+    // WebCodecs) — genuinely takes the show's full duration and plays the
+    // effects on screen, since it's a literal screen capture. Telling the
+    // user why up front means "this is slow and shows the effects" reads as
+    // an explained limitation of their browser, not a broken fast path.
+    window.alert(
+      'Seu navegador não suporta o modo de renderização instantânea (é necessário Chrome ou Edge atualizados). Continuando no modo tradicional: vai reproduzir o show em tempo real (mesma duração da música) para gravar.',
+    );
     usePlaybackStore.getState().seek(trimStart);
     // Same canvas-remount-for-preserveDrawingBuffer wait as the manual
     // Record Clip button (see TopToolbar.tsx) — isClipRecording must flip

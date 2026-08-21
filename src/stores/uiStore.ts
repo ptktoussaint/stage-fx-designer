@@ -30,6 +30,8 @@ interface UiState {
   isHotkeysPanelOpen: boolean;
   isClipRecording: boolean;
   isPlaylistOpen: boolean;
+  isAutoRendering: boolean;
+  autoRenderProgress: number;
 
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
@@ -45,6 +47,8 @@ interface UiState {
   setHotkeysPanelOpen: (open: boolean) => void;
   setClipRecording: (recording: boolean) => void;
   setPlaylistOpen: (open: boolean) => void;
+  setAutoRendering: (rendering: boolean) => void;
+  setAutoRenderProgress: (progress: number) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -63,6 +67,8 @@ export const useUiStore = create<UiState>((set) => ({
   isHotkeysPanelOpen: false,
   isClipRecording: false,
   isPlaylistOpen: false,
+  isAutoRendering: false,
+  autoRenderProgress: 0,
 
   setZoom: (zoom) => set({ zoom: Math.min(4, Math.max(0.1, zoom)) }),
   setPan: (pan) => set({ pan }),
@@ -78,4 +84,6 @@ export const useUiStore = create<UiState>((set) => ({
   setHotkeysPanelOpen: (isHotkeysPanelOpen) => set({ isHotkeysPanelOpen }),
   setClipRecording: (isClipRecording) => set({ isClipRecording }),
   setPlaylistOpen: (isPlaylistOpen) => set({ isPlaylistOpen }),
+  setAutoRendering: (isAutoRendering) => set({ isAutoRendering }),
+  setAutoRenderProgress: (autoRenderProgress) => set({ autoRenderProgress }),
 }));

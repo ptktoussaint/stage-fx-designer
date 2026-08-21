@@ -9,6 +9,7 @@ import { CenterWorkspace } from './CenterWorkspace';
 import { RightInspector } from './RightInspector';
 import { BottomTimelinePanel } from './BottomTimelinePanel';
 import { AppContextMenu } from './AppContextMenu';
+import { RenderProgressToast } from './RenderProgressToast';
 import './AppShell.css';
 
 export function AppShell() {
@@ -31,6 +32,7 @@ export function AppShell() {
       </div>
       <BottomTimelinePanel />
       <AppContextMenu />
+      <RenderProgressToast />
     </div>
   );
 }

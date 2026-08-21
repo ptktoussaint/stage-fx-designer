@@ -12,6 +12,12 @@ export function StageEditor() {
   const snapEnabled = useProjectStore((s) => s.project.settings.snap.enabled);
   const setSettings = useProjectStore((s) => s._setSettings);
   const snap = useProjectStore((s) => s.project.settings.snap);
+  // The fast offline render (engine/offlineShowRenderer.ts) drives this same
+  // visible canvas at high speed to produce the video — without this cover,
+  // every effect in the show visibly flashes by as it fast-forwards through
+  // frames. A small corner toast (RenderProgressToast) shows progress
+  // instead, like a browser download notification.
+  const isAutoRendering = useUiStore((s) => s.isAutoRendering);
 
   return (
     <div className="stage-editor">
@@ -44,6 +50,12 @@ export function StageEditor() {
       </div>
       <div className="stage-editor__surface">
         {viewMode === '2D' ? <StageRenderer2D /> : <StageRenderer3D />}
+        {isAutoRendering && (
+          <div className="stage-editor__render-overlay">
+            <span className="stage-editor__render-overlay-spinner" />
+            <span>Renderizando vídeo…</span>
+          </div>
+        )}
       </div>
     </div>
   );
