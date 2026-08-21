@@ -18,26 +18,26 @@ export function StageEditor() {
       <div className="stage-editor__toolbar">
         <IconButton
           icon="cursor"
-          label="Select Tool"
+          label="Ferramenta de Seleção"
           active={activeTool === 'select'}
           onClick={() => setActiveTool('select')}
         />
         <IconButton
           icon="ruler"
-          label="Distance Tool (select two devices)"
+          label="Ferramenta de Distância (selecione dois efeitos)"
           active={activeTool === 'distance'}
           onClick={() => setActiveTool('distance')}
         />
         <IconButton
           icon="hand"
-          label="Pan Tool (drag to move the view — also always available via middle-mouse drag)"
+          label="Ferramenta de Mover Vista (arraste para mover a vista — também disponível arrastando com o botão do meio do mouse)"
           active={activeTool === 'pan'}
           onClick={() => setActiveTool('pan')}
         />
         <div className="stage-editor__toolbar-divider" />
         <IconButton
           icon="grid"
-          label={snapEnabled ? 'Disable Snap' : 'Enable Snap'}
+          label={snapEnabled ? 'Desativar Encaixe' : 'Ativar Encaixe'}
           active={snapEnabled}
           onClick={() => setSettings({ snap: { ...snap, enabled: !snapEnabled } })}
         />

@@ -25,12 +25,12 @@ export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }
 
   return (
     <div className="inspector-section">
-      <div className="inspector-group-title">{devices.length} Devices Selected</div>
+      <div className="inspector-group-title">{devices.length} Efeitos Selecionados</div>
 
       <button
         type="button"
         className="inspector-trigger-button inspector-trigger-button--cue"
-        title="Adds one timeline event per selected device, all at the current playhead position"
+        title="Adiciona uma marcação na timeline para cada efeito selecionado, todas na posição atual do cursor"
         onClick={() =>
           ids.forEach((deviceId) =>
             addTimelineEvent({
@@ -44,51 +44,51 @@ export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }
           )
         }
       >
-        Add Cue for {devices.length} Devices at {formatTime(Math.max(0, currentTime - trimStart))}
+        Adicionar Marcação para {devices.length} Efeitos em {formatTime(Math.max(0, currentTime - trimStart))}
       </button>
 
-      <div className="inspector-group-title">Hotkeys (live trigger)</div>
+      <div className="inspector-group-title">Atalhos (disparo ao vivo)</div>
       <HotkeyCaptureButton
-        label={`Assign Hotkey for ${devices.length} Devices`}
+        label={`Atribuir Atalho para ${devices.length} Efeitos`}
         onCapture={(code, keyLabel) =>
           assignHotkey(code, keyLabel, ids, devices.map((d) => d.name).join(' + '))
         }
       />
 
-      <div className="inspector-group-title">Align</div>
+      <div className="inspector-group-title">Alinhar</div>
       <div className="inspector-toolgrid">
-        <IconButton icon="align-left" label="Align Left" onClick={() => alignDevices(ids, 'left')} />
-        <IconButton icon="align-center-x" label="Align Center" onClick={() => alignDevices(ids, 'center-x')} />
-        <IconButton icon="align-right" label="Align Right" onClick={() => alignDevices(ids, 'right')} />
+        <IconButton icon="align-left" label="Alinhar à Esquerda" onClick={() => alignDevices(ids, 'left')} />
+        <IconButton icon="align-center-x" label="Alinhar ao Centro" onClick={() => alignDevices(ids, 'center-x')} />
+        <IconButton icon="align-right" label="Alinhar à Direita" onClick={() => alignDevices(ids, 'right')} />
       </div>
 
-      <div className="inspector-group-title">Distribute</div>
+      <div className="inspector-group-title">Distribuir</div>
       <div className="inspector-toolgrid">
         <IconButton
           icon="distribute-h"
-          label="Distribute Horizontally"
+          label="Distribuir Horizontalmente"
           onClick={() => distributeDevices(ids, 'horizontal')}
           disabled={devices.length < 3}
         />
         <IconButton
           icon="distribute-v"
-          label="Distribute Vertically"
+          label="Distribuir Verticalmente"
           onClick={() => distributeDevices(ids, 'vertical')}
           disabled={devices.length < 3}
         />
       </div>
 
-      <div className="inspector-group-title">Group</div>
+      <div className="inspector-group-title">Grupo</div>
       <div className="inspector-section__row inspector-section__row--gap">
         <input
           className="inspector-text-input"
-          placeholder="Group name"
+          placeholder="Nome do grupo"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
         />
         <IconButton
           icon="group"
-          label="Group Selected"
+          label="Agrupar Selecionados"
           onClick={() => {
             if (!groupName.trim()) return;
             createGroup(groupName.trim(), ids, GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)]);
@@ -97,11 +97,11 @@ export function MultiSelectToolsPanel({ devices }: { devices: DeviceInstance[] }
         />
       </div>
 
-      <div className="inspector-group-title">Actions</div>
+      <div className="inspector-group-title">Ações</div>
       <div className="inspector-toolgrid">
-        <IconButton icon="lock" label="Lock" onClick={() => setDevicesLocked(ids, true)} />
-        <IconButton icon="unlock" label="Unlock" onClick={() => setDevicesLocked(ids, false)} />
-        <IconButton icon="trash" label="Delete" onClick={() => removeDevices(ids)} />
+        <IconButton icon="lock" label="Travar" onClick={() => setDevicesLocked(ids, true)} />
+        <IconButton icon="unlock" label="Destravar" onClick={() => setDevicesLocked(ids, false)} />
+        <IconButton icon="trash" label="Excluir" onClick={() => removeDevices(ids)} />
       </div>
     </div>
   );

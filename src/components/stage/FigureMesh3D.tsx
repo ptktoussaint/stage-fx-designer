@@ -86,6 +86,48 @@ function InstrumentMarker({
           </mesh>
         </group>
       );
+    case 'figure-dj-console': {
+      const tableHeight = heightMeters * 0.78;
+      const deckColor = '#232326';
+      return (
+        <group>
+          {/* Table/booth stand */}
+          <mesh position={[0, tableHeight / 2, 0]} castShadow>
+            <boxGeometry args={[0.8, tableHeight, 0.52]} />
+            <meshStandardMaterial color="#141517" />
+          </mesh>
+          {/* Controller body */}
+          <mesh position={[0, tableHeight + 0.04, 0]} castShadow>
+            <boxGeometry args={[0.75, 0.08, 0.48]} />
+            <meshStandardMaterial color={color} />
+          </mesh>
+          {/* Jog wheel platters (left/right) */}
+          {[-0.24, 0.24].map((dx) => (
+            <group key={dx} position={[dx, tableHeight + 0.085, 0]}>
+              <mesh castShadow>
+                <cylinderGeometry args={[0.16, 0.16, 0.015, 32]} />
+                <meshStandardMaterial color={deckColor} metalness={0.4} roughness={0.35} />
+              </mesh>
+              <mesh position={[0, 0.009, 0]}>
+                <cylinderGeometry args={[0.05, 0.05, 0.006, 24]} />
+                <meshStandardMaterial color="#e5c23c" />
+              </mesh>
+            </group>
+          ))}
+          {/* Center mixer strip with small channel faders */}
+          <mesh position={[0, tableHeight + 0.09, 0]} castShadow>
+            <boxGeometry args={[0.18, 0.02, 0.4]} />
+            <meshStandardMaterial color={deckColor} />
+          </mesh>
+          {[-0.06, 0, 0.06].map((dz) => (
+            <mesh key={dz} position={[0, tableHeight + 0.105, dz]}>
+              <boxGeometry args={[0.03, 0.02, 0.09]} />
+              <meshStandardMaterial color="#5a5a60" />
+            </mesh>
+          ))}
+        </group>
+      );
+    }
     case 'figure-keyboard':
       return (
         <group>

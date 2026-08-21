@@ -91,3 +91,25 @@ export function moveTrackOrder(trackKey: string, direction: -1 | 1, resolvedOrde
   [next[idxA], next[idxB]] = [next[idxB], next[idxA]];
   useProjectStore.getState().setTimelineOrganization({ trackOrder: next });
 }
+
+/**
+ * Drag-and-drop reorder: moves `draggedKey` to sit right before/after
+ * `targetKey`. Like moveTrackOrder, stays within the same folder membership
+ * (dropping on a track in a different folder/section is a no-op) — dragging
+ * a track between folders is "Assign to Folder", not this.
+ */
+export function reorderTrack(draggedKey: string, targetKey: string, insertAfter: boolean, resolvedOrder: string[]): void {
+  if (draggedKey === targetKey) return;
+  const { project } = useProjectStore.getState();
+  const trackFolder = project.timeline.trackFolder;
+  const draggedFolder = trackFolder[draggedKey] ?? null;
+  const targetFolder = trackFolder[targetKey] ?? null;
+  if (draggedFolder !== targetFolder) return;
+
+  const withoutDragged = resolvedOrder.filter((k) => k !== draggedKey);
+  let insertAt = withoutDragged.indexOf(targetKey);
+  if (insertAt === -1) return;
+  if (insertAfter) insertAt += 1;
+  const next = [...withoutDragged.slice(0, insertAt), draggedKey, ...withoutDragged.slice(insertAt)];
+  useProjectStore.getState().setTimelineOrganization({ trackOrder: next });
+}

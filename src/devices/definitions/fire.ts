@@ -3,7 +3,7 @@ import type { DeviceDefinition } from '../../types';
 export const fireDevices: DeviceDefinition[] = [
   {
     id: 'flame-jet',
-    name: 'Flame Jet',
+    name: 'Jato de Chama',
     category: 'FIRE',
     icon: 'flame',
     simulationType: 'flame',
@@ -25,7 +25,7 @@ export const fireDevices: DeviceDefinition[] = [
   },
   {
     id: 'fire-machine',
-    name: 'Fire Machine',
+    name: 'Máquina de Fogo',
     category: 'FIRE',
     icon: 'flame',
     simulationType: 'flame',
@@ -35,11 +35,13 @@ export const fireDevices: DeviceDefinition[] = [
       variableDuration: true,
       variableIntensity: true,
       variableAngle: false,
+      variableWidth: true,
     },
     defaultParameters: {
       height: 2,
       duration: 0.8,
       intensity: 1,
+      width: 1,
     },
   },
 ];

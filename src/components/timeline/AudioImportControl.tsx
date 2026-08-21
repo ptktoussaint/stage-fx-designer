@@ -33,7 +33,7 @@ export function AudioImportControl() {
         trimEnd: null,
       });
     } catch {
-      window.alert('Could not read this audio file. Try a standard MP3 or WAV.');
+      window.alert('Não foi possível ler este arquivo de áudio. Tente um MP3 ou WAV padrão.');
     } finally {
       setIsDecoding(false);
     }
@@ -72,7 +72,7 @@ export function AudioImportControl() {
           <span className="audio-import__name" title={audio.fileName}>
             {audio.fileName}
           </span>
-          <IconButton icon="trash" label="Remove Audio" onClick={handleRemove} />
+          <IconButton icon="trash" label="Remover Áudio" onClick={handleRemove} />
         </>
       ) : (
         <button
@@ -82,7 +82,7 @@ export function AudioImportControl() {
           onClick={() => fileInputRef.current?.click()}
         >
           <Icon name="music" size={12} />
-          {isDecoding ? 'Decoding…' : 'Import Audio'}
+          {isDecoding ? 'Decodificando…' : 'Importar Áudio'}
         </button>
       )}
     </div>

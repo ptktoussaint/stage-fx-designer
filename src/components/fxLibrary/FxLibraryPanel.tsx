@@ -25,7 +25,7 @@ function FxLibraryItem({ definition }: { definition: DeviceDefinition }) {
         e.dataTransfer.effectAllowed = 'copy';
       }}
       onClick={handleClick}
-      title={`Add ${definition.name}`}
+      title={`Adicionar ${definition.name}`}
     >
       <span className={`fx-item__icon fx-item__icon--${definition.category.toLowerCase()}`}>
         <Icon name={definition.icon as never} />
@@ -59,7 +59,7 @@ function FxCategory({ category }: { category: (typeof CATEGORY_ORDER)[number] })
 export function FxLibraryPanel() {
   return (
     <div className="fx-library">
-      <div className="panel-title">FX LIBRARY</div>
+      <div className="panel-title">BIBLIOTECA DE EFEITOS</div>
       <div className="fx-library__list">
         {CATEGORY_ORDER.map((category) => (
           <FxCategory key={category} category={category} />

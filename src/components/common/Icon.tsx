@@ -51,7 +51,8 @@ export type IconName =
   | 'shape-open'
   | 'shape-cone'
   | 'shape-inverted-cone'
-  | 'auto-render';
+  | 'auto-render'
+  | 'drag-handle';
 
 const PATHS: Record<IconName, string> = {
   flame: 'M12 2c1 3-3 4-3 7a3 3 0 1 0 6 0c0-1-.5-2-1-2 1 3-1 4-2 4a2 2 0 0 1-2-2c0-2 2-3 2-7Z',
@@ -102,6 +103,7 @@ const PATHS: Record<IconName, string> = {
   'shape-cone': 'M12 20 4 4 M12 20 20 4',
   'shape-inverted-cone': 'M12 4 4 20 M12 4 20 20',
   'auto-render': 'M4 3h16v12H4z M9 7v4l5-2z M6 19h12 M9 22h6',
+  'drag-handle': 'M9 6h0 M15 6h0 M9 12h0 M15 12h0 M9 18h0 M15 18h0',
 };
 
 interface IconProps {

@@ -17,7 +17,7 @@ import { DEFAULT_STAGE_CONFIG } from '../types/stage';
 import { createId } from '../utils/id';
 import { saveProjectToLocal } from '../persistence/autosave';
 
-export function createEmptyProject(name = 'Untitled Show'): Project {
+export function createEmptyProject(name = 'Show Sem Título'): Project {
   const now = new Date().toISOString();
   return {
     id: createId(),

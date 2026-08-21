@@ -3,7 +3,7 @@ import type { DeviceDefinition } from '../../types';
 export const confettiDevices: DeviceDefinition[] = [
   {
     id: 'confetti-cannon',
-    name: 'Confetti Cannon',
+    name: 'Canhão de Confete',
     category: 'CONFETTI',
     icon: 'confetti',
     simulationType: 'confettiCannon',
@@ -20,7 +20,7 @@ export const confettiDevices: DeviceDefinition[] = [
   },
   {
     id: 'streamer',
-    name: 'Streamer',
+    name: 'Serpentina',
     category: 'CONFETTI',
     icon: 'confetti',
     simulationType: 'streamer',

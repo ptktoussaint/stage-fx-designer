@@ -9,10 +9,10 @@ export function StageSettingsForm() {
 
   return (
     <div>
-      <NumberField label="Width" value={stage.width} step={0.5} min={1} suffix="m" onChange={(width) => setStage({ width })} />
-      <NumberField label="Depth" value={stage.depth} step={0.5} min={1} suffix="m" onChange={(depth) => setStage({ depth })} />
+      <NumberField label="Largura" value={stage.width} step={0.5} min={1} suffix="m" onChange={(width) => setStage({ width })} />
+      <NumberField label="Profundidade" value={stage.depth} step={0.5} min={1} suffix="m" onChange={(depth) => setStage({ depth })} />
       <NumberField
-        label="Stage Height"
+        label="Altura do Palco"
         value={stage.height}
         step={0.1}
         min={0}
@@ -20,7 +20,7 @@ export function StageSettingsForm() {
         onChange={(height) => setStage({ height })}
       />
       <NumberField
-        label="Front Space"
+        label="Espaço Frontal"
         value={stage.frontMargin}
         step={0.5}
         min={0}
@@ -28,7 +28,7 @@ export function StageSettingsForm() {
         onChange={(frontMargin) => setStage({ frontMargin })}
       />
       <NumberField
-        label="Grid Size"
+        label="Tamanho da Grade"
         value={stage.gridSize}
         step={0.05}
         min={0.05}
@@ -36,21 +36,21 @@ export function StageSettingsForm() {
         onChange={(gridSize) => setStage({ gridSize })}
       />
       <NumberField
-        label="Origin X"
+        label="Origem Horizontal"
         value={stage.origin.x}
         step={0.5}
         suffix="m"
         onChange={(x) => setStage({ origin: { ...stage.origin, x } })}
       />
       <NumberField
-        label="Origin Y"
+        label="Origem Distância"
         value={stage.origin.y}
         step={0.5}
         suffix="m"
         onChange={(y) => setStage({ origin: { ...stage.origin, y } })}
       />
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
-        Stage Color
+        Cor do Palco
         <input type="color" value={stage.color} onChange={(e) => setStage({ color: e.target.value })} />
       </label>
 
@@ -62,7 +62,7 @@ export function StageSettingsForm() {
           checked={snap.enabled}
           onChange={(e) => setSettings({ snap: { ...snap, enabled: e.target.checked } })}
         />
-        Snap enabled
+        Encaixe ativado
       </label>
       {(['toGrid', 'toDevice', 'toCenter', 'toStageEdge'] as const).map((key) => (
         <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0 3px 16px', color: 'var(--text-secondary)' }}>
@@ -72,10 +72,10 @@ export function StageSettingsForm() {
             checked={snap[key]}
             onChange={(e) => setSettings({ snap: { ...snap, [key]: e.target.checked } })}
           />
-          {key === 'toGrid' && 'Snap to Grid'}
-          {key === 'toDevice' && 'Snap to Device'}
-          {key === 'toCenter' && 'Snap to Center'}
-          {key === 'toStageEdge' && 'Snap to Stage Edge'}
+          {key === 'toGrid' && 'Encaixar na Grade'}
+          {key === 'toDevice' && 'Encaixar em Efeitos'}
+          {key === 'toCenter' && 'Encaixar no Centro'}
+          {key === 'toStageEdge' && 'Encaixar na Borda do Palco'}
         </label>
       ))}
     </div>

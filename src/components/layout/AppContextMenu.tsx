@@ -33,20 +33,20 @@ export function AppContextMenu() {
     items = found
       ? [
           {
-            label: 'Rename',
+            label: 'Renomear',
             onSelect: () => {
-              const next = window.prompt('Rename platform', found.name);
+              const next = window.prompt('Renomear praticável', found.name);
               if (next && next.trim()) {
-                updatePlatformProperty(platformId, { name: found.name }, { name: next.trim() }, 'Rename Platform');
+                updatePlatformProperty(platformId, { name: found.name }, { name: next.trim() }, 'Renomear Praticável');
               }
             },
           },
           {
-            label: found.locked ? 'Unlock' : 'Lock',
+            label: found.locked ? 'Destravar' : 'Travar',
             icon: found.locked ? 'unlock' : 'lock',
-            onSelect: () => updatePlatformProperty(platformId, { locked: found.locked }, { locked: !found.locked }, 'Toggle Lock'),
+            onSelect: () => updatePlatformProperty(platformId, { locked: found.locked }, { locked: !found.locked }, 'Travar/Destravar'),
           },
-          { label: 'Delete', icon: 'trash', danger: true, onSelect: () => removePlatforms([platformId]) },
+          { label: 'Excluir', icon: 'trash', danger: true, onSelect: () => removePlatforms([platformId]) },
         ]
       : [];
   } else if (contextMenu.target.type === 'figure') {
@@ -55,20 +55,20 @@ export function AppContextMenu() {
     items = found
       ? [
           {
-            label: 'Rename',
+            label: 'Renomear',
             onSelect: () => {
-              const next = window.prompt('Rename figure', found.name);
+              const next = window.prompt('Renomear cenário', found.name);
               if (next && next.trim()) {
-                updateFigureProperty(figureId, { name: found.name }, { name: next.trim() }, 'Rename Figure');
+                updateFigureProperty(figureId, { name: found.name }, { name: next.trim() }, 'Renomear Cenário');
               }
             },
           },
           {
-            label: found.locked ? 'Unlock' : 'Lock',
+            label: found.locked ? 'Destravar' : 'Travar',
             icon: found.locked ? 'unlock' : 'lock',
-            onSelect: () => updateFigureProperty(figureId, { locked: found.locked }, { locked: !found.locked }, 'Toggle Lock'),
+            onSelect: () => updateFigureProperty(figureId, { locked: found.locked }, { locked: !found.locked }, 'Travar/Destravar'),
           },
-          { label: 'Delete', icon: 'trash', danger: true, onSelect: () => removeFigures([figureId]) },
+          { label: 'Excluir', icon: 'trash', danger: true, onSelect: () => removeFigures([figureId]) },
         ]
       : [];
   } else if (contextMenu.target.type === 'device') {
@@ -77,54 +77,54 @@ export function AppContextMenu() {
 
     items = found
       ? [
-          { label: 'Duplicate', icon: 'duplicate', onSelect: () => duplicateDevices([deviceId]) },
+          { label: 'Duplicar', icon: 'duplicate', onSelect: () => duplicateDevices([deviceId]) },
           {
-            label: 'Rename',
+            label: 'Renomear',
             onSelect: () => {
-              const next = window.prompt('Rename device', found.name);
+              const next = window.prompt('Renomear efeito', found.name);
               if (next && next.trim()) {
-                updateDeviceProperty(deviceId, { name: found.name }, { name: next.trim() }, 'Rename Device');
+                updateDeviceProperty(deviceId, { name: found.name }, { name: next.trim() }, 'Renomear Efeito');
               }
             },
           },
           {
-            label: found.locked ? 'Unlock' : 'Lock',
+            label: found.locked ? 'Destravar' : 'Travar',
             icon: found.locked ? 'unlock' : 'lock',
             onSelect: () => setDevicesLocked([deviceId], !found.locked),
           },
           ...groups
             .filter((g) => !found.groupIds.includes(g.id))
             .map((g) => ({
-              label: `Add to ${g.name}`,
+              label: `Adicionar a ${g.name}`,
               icon: 'group' as const,
               onSelect: () =>
                 updateDeviceProperty(
                   deviceId,
                   { groupIds: found.groupIds },
                   { groupIds: [...found.groupIds, g.id] },
-                  'Add to Group',
+                  'Adicionar ao Grupo',
                 ),
             })),
           ...groups
             .filter((g) => found.groupIds.includes(g.id))
             .map((g) => ({
-              label: `Remove from ${g.name}`,
+              label: `Remover de ${g.name}`,
               onSelect: () =>
                 updateDeviceProperty(
                   deviceId,
                   { groupIds: found.groupIds },
                   { groupIds: found.groupIds.filter((id) => id !== g.id) },
-                  'Remove from Group',
+                  'Remover do Grupo',
                 ),
             })),
-          { label: 'Delete', icon: 'trash', danger: true, onSelect: () => removeDevices([deviceId]) },
+          { label: 'Excluir', icon: 'trash', danger: true, onSelect: () => removeDevices([deviceId]) },
         ]
       : [];
   } else {
     items = [
-      { label: 'Paste', disabled: true, onSelect: () => {} },
-      { label: 'Select All', onSelect: () => setSelection(devices.map((d) => d.id)) },
-      { label: 'Stage Settings', icon: 'settings', onSelect: () => setStageSettingsOpen(true) },
+      { label: 'Colar', disabled: true, onSelect: () => {} },
+      { label: 'Selecionar Tudo', onSelect: () => setSelection(devices.map((d) => d.id)) },
+      { label: 'Configurações do Palco', icon: 'settings', onSelect: () => setStageSettingsOpen(true) },
     ];
   }
 

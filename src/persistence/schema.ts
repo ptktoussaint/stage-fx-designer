@@ -40,7 +40,7 @@ export function migrateProject(raw: unknown): Project | null {
 
   return {
     id: doc.id ?? createId(),
-    name: doc.name ?? 'Untitled Show',
+    name: doc.name ?? 'Show Sem Título',
     schemaVersion: CURRENT_SCHEMA_VERSION,
     createdAt: doc.createdAt ?? new Date().toISOString(),
     updatedAt: doc.updatedAt ?? new Date().toISOString(),

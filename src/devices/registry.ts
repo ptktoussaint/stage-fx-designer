@@ -36,12 +36,12 @@ export const CATEGORY_ORDER: DeviceCategory[] = [
 ];
 
 export const CATEGORY_LABELS: Record<DeviceCategory, string> = {
-  FIRE: 'Fire',
+  FIRE: 'Fogo',
   CO2: 'CO₂',
-  SPARK: 'Spark',
-  PYRO_SIMULATION: 'Pyro Simulation',
-  ATMOSPHERIC: 'Atmospheric',
-  CONFETTI: 'Confetti',
+  SPARK: 'Faísca',
+  PYRO_SIMULATION: 'Simulação de Pirotecnia',
+  ATMOSPHERIC: 'Atmosférico',
+  CONFETTI: 'Confete',
 };
 
 export function getDefinitionsByCategory(category: DeviceCategory): DeviceDefinition[] {

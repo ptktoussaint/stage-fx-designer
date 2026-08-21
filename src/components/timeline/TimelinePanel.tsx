@@ -19,6 +19,7 @@ import {
 } from '../../timeline/trackOrganization';
 import { Icon } from '../common/Icon';
 import { clipRecorder } from '../../engine/clipRecorder';
+import { isOfflineRenderSupported, renderShowOffline } from '../../engine/offlineShowRenderer';
 import type { TimelineEvent, TimelineTargetType } from '../../types';
 import './TimelinePanel.css';
 
@@ -64,6 +65,7 @@ export function TimelinePanel() {
   const isClipRecording = useUiStore((s) => s.isClipRecording);
   const setClipRecording = useUiStore((s) => s.setClipRecording);
   const [isAutoRendering, setIsAutoRendering] = useState(false);
+  const [autoRenderProgress, setAutoRenderProgress] = useState(0);
 
   const [openFolderMenuKey, setOpenFolderMenuKey] = useState<string | null>(null);
 
@@ -139,11 +141,12 @@ export function TimelinePanel() {
   };
 
   /**
-   * Plays the whole show start-to-finish while recording the 3D view, so
-   * getting a video doesn't require manually hitting Record then Play then
-   * remembering to Stop at the right moment. Reuses the same clipRecorder
-   * as the manual "Record Clip" button — this is just an orchestrated
-   * play+record+auto-stop around it.
+   * Renders the whole show to a video file without playing it in real time
+   * (see engine/offlineShowRenderer.ts) — the 3D scene is driven by a
+   * virtual clock and audio is encoded straight from the decoded buffer, so
+   * this finishes in roughly however long encoding takes, not the show's
+   * actual duration. Falls back to the old play-and-capture approach (which
+   * does take real time) only if the browser lacks WebCodecs support.
    */
   const handleAutoRenderShow = async () => {
     if (isClipRecording || isAutoRendering) return;
@@ -153,17 +156,37 @@ export function TimelinePanel() {
     // pad past the last cue so its effect has time to visually finish.
     const targetEnd = trimEnd ?? duration ?? (lastEventEnd > 0 ? lastEventEnd + 3 : 0);
     if (targetEnd <= trimStart) {
-      window.alert('Nothing to render yet — import audio or add timeline cues first.');
+      window.alert('Nada para renderizar ainda — importe um áudio ou adicione marcações na timeline primeiro.');
       return;
     }
 
     setIsAutoRendering(true);
+    setAutoRenderProgress(0);
     if (viewMode !== '3D') {
       setSettings({ viewMode: '3D' });
       await new Promise((resolve) => setTimeout(resolve, 150));
     }
-    usePlaybackStore.getState().seek(trimStart);
 
+    if (isOfflineRenderSupported()) {
+      const wasPlaying = usePlaybackStore.getState().isPlaying;
+      if (wasPlaying) usePlaybackStore.getState().stop();
+      const error = await renderShowOffline({
+        startTime: trimStart,
+        endTime: targetEnd,
+        fileNameBase: projectName.replace(/\s+/g, '_') || 'show',
+        onProgress: setAutoRenderProgress,
+      });
+      if (error) window.alert(error);
+      // Leave the transport where the render left the show engine — snap
+      // the visible playhead back to where the render started so a manual
+      // Play right after doesn't look like it jumped to the end.
+      usePlaybackStore.getState().seek(trimStart);
+      setIsAutoRendering(false);
+      return;
+    }
+
+    // Fallback: play + capture in real time (older browser without WebCodecs).
+    usePlaybackStore.getState().seek(trimStart);
     const error = clipRecorder.start();
     if (error) {
       window.alert(error);
@@ -255,7 +278,7 @@ export function TimelinePanel() {
       <div className="timeline-panel timeline-panel--collapsed">
         <span>TIMELINE</span>
         <span className="timeline-panel__time">{formatTime(Math.max(0, currentTime - audio.trimStart))}</span>
-        <IconButton icon="chevron-right" label="Expand Timeline" onClick={toggleCollapsed} className="timeline-panel__collapse-toggle" />
+        <IconButton icon="chevron-right" label="Expandir Timeline" onClick={toggleCollapsed} className="timeline-panel__collapse-toggle" />
       </div>
     );
   }
@@ -266,12 +289,12 @@ export function TimelinePanel() {
         <span className="panel-title" style={{ border: 'none', padding: 0 }}>
           TIMELINE
         </span>
-        <span className="timeline-panel__hint">Double-click a lane to add an event · drag to reposition</span>
+        <span className="timeline-panel__hint">Clique duas vezes na faixa para adicionar uma marcação · arraste para reposicionar</span>
         <IconButton
           icon="platform"
-          label="New Folder (group tracks into a collapsible list)"
+          label="Nova Lista (agrupa faixas em uma lista recolhível)"
           onClick={() => {
-            const name = window.prompt('Folder name');
+            const name = window.prompt('Nome da lista');
             if (name && name.trim()) addTimelineFolder(name.trim());
           }}
         />
@@ -279,8 +302,8 @@ export function TimelinePanel() {
           icon="auto-render"
           label={
             isAutoRendering
-              ? 'Rendering… (plays the whole show and saves it as a video automatically)'
-              : 'Auto-Render Full Show to Video (plays it start-to-finish and saves a .webm, no manual Record needed)'
+              ? `Renderizando… ${Math.round(autoRenderProgress * 100)}% (não precisa esperar olhando — salva sozinho ao terminar)`
+              : 'Renderizar Show Completo em Vídeo (renderiza instantaneamente em segundo plano, sem precisar gravar manualmente)'
           }
           active={isAutoRendering}
           disabled={isAutoRendering || isClipRecording}
@@ -288,7 +311,7 @@ export function TimelinePanel() {
           className={isAutoRendering ? 'timeline-panel__auto-render-active' : undefined}
         />
         <AudioImportControl />
-        <IconButton icon="chevron-down" label="Collapse Timeline" onClick={toggleCollapsed} />
+        <IconButton icon="chevron-down" label="Recolher Timeline" onClick={toggleCollapsed} />
       </div>
       <div
         className="timeline-panel__scroll"
@@ -348,7 +371,7 @@ export function TimelinePanel() {
             })}
 
             {devices.length === 0 && groups.length === 0 && (
-              <div className="timeline-panel__empty">Add devices from the FX Library to create timeline tracks.</div>
+              <div className="timeline-panel__empty">Adicione efeitos da Biblioteca de Efeitos para criar faixas na timeline.</div>
             )}
             <div
               className="timeline-panel__playhead-line"

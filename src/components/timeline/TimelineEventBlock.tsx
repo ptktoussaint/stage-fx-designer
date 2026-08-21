@@ -32,8 +32,8 @@ export function TimelineEventBlock({
       onClick={(e) => e.stopPropagation()}
       title={
         isOutsideTrim
-          ? `${event.action} @ ${event.time.toFixed(3)}s (outside the trimmed range — won't fire)`
-          : `${event.action} @ ${event.time.toFixed(3)}s`
+          ? `disparo @ ${event.time.toFixed(3)}s (fora do trecho selecionado — não vai disparar)`
+          : `disparo @ ${event.time.toFixed(3)}s`
       }
     >
       {isSelected && (

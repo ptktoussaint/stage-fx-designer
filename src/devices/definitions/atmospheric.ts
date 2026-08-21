@@ -3,7 +3,7 @@ import type { DeviceDefinition } from '../../types';
 export const atmosphericDevices: DeviceDefinition[] = [
   {
     id: 'smoke',
-    name: 'Smoke',
+    name: 'Fumaça',
     category: 'ATMOSPHERIC',
     icon: 'smoke',
     simulationType: 'smoke',
@@ -18,7 +18,7 @@ export const atmosphericDevices: DeviceDefinition[] = [
   },
   {
     id: 'fog',
-    name: 'Fog',
+    name: 'Neblina',
     category: 'ATMOSPHERIC',
     icon: 'fog',
     simulationType: 'fog',

@@ -29,7 +29,7 @@ export class CreateGroupCommand implements Command {
   constructor(name: string, deviceIds: string[], color: string) {
     this.deviceIds = deviceIds;
     this.group = { id: createId(), name, deviceIds, color };
-    this.label = `Group "${name}"`;
+    this.label = `Agrupar "${name}"`;
   }
 
   execute() {
@@ -50,7 +50,7 @@ export class UngroupCommand implements Command {
 
   constructor(group: Group) {
     this.group = group;
-    this.label = `Ungroup "${group.name}"`;
+    this.label = `Desagrupar "${group.name}"`;
   }
 
   execute() {
@@ -71,7 +71,7 @@ export class SetDevicesLockedCommand implements Command {
   constructor(deviceIds: string[], locked: boolean) {
     this.deviceIds = deviceIds;
     this.locked = locked;
-    this.label = locked ? 'Lock Devices' : 'Unlock Devices';
+    this.label = locked ? 'Travar Efeitos' : 'Destravar Efeitos';
   }
 
   execute() {

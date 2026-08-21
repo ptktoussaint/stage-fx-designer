@@ -17,6 +17,7 @@
     "react-dom": "^19.2.8",
     "three": "^0.185.1",
     "uuid": "^14.0.2",
+    "webm-muxer": "^5.1.4",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

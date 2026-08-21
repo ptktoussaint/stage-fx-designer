@@ -24,8 +24,8 @@ export interface PlatformInstance {
 export const DEFAULT_PLATFORM_COLOR = '#5b6472';
 
 export const PLATFORM_PRESETS: { name: string; dimensions: PlatformInstance['dimensions'] }[] = [
-  { name: 'DJ Table', dimensions: { width: 1.2, height: 1.0, depth: 0.5 } },
-  { name: 'Riser 2x1m', dimensions: { width: 2, height: 0.4, depth: 1 } },
-  { name: 'Riser 1x1m', dimensions: { width: 1, height: 0.4, depth: 1 } },
-  { name: 'Custom Platform', dimensions: { width: 1, height: 0.6, depth: 1 } },
+  { name: 'Mesa de DJ', dimensions: { width: 1.2, height: 1.0, depth: 0.5 } },
+  { name: 'Praticável 2x1m', dimensions: { width: 2, height: 0.4, depth: 1 } },
+  { name: 'Praticável 1x1m', dimensions: { width: 1, height: 0.4, depth: 1 } },
+  { name: 'Praticável Personalizado', dimensions: { width: 1, height: 0.6, depth: 1 } },
 ];

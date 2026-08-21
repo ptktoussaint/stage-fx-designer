@@ -19,7 +19,7 @@ export class AddPlatformCommand implements Command {
       color,
       locked: false,
     };
-    this.label = `Add ${this.platform.name}`;
+    this.label = `Adicionar ${this.platform.name}`;
   }
 
   execute() {
@@ -39,7 +39,7 @@ export class RemovePlatformsCommand implements Command {
   constructor(platformIds: string[]) {
     this.platformIds = platformIds;
     this.prevPlatforms = useProjectStore.getState().project.platforms;
-    this.label = platformIds.length > 1 ? `Delete ${platformIds.length} Platforms` : 'Delete Platform';
+    this.label = platformIds.length > 1 ? `Excluir ${platformIds.length} Praticáveis` : 'Excluir Praticável';
   }
 
   execute() {
@@ -63,7 +63,7 @@ export class MovePlatformCommand implements Command {
     this.platformId = platformId;
     this.from = from;
     this.to = to;
-    this.label = 'Move Platform';
+    this.label = 'Mover Praticável';
   }
 
   execute() {
@@ -90,7 +90,7 @@ export class UpdatePlatformCommand implements Command {
     platformId: string,
     patchBefore: Partial<PlatformInstance>,
     patchAfter: Partial<PlatformInstance>,
-    label = 'Edit Platform',
+    label = 'Editar Praticável',
   ) {
     this.platformId = platformId;
     this.patchBefore = patchBefore;

@@ -19,22 +19,22 @@ export function InspectorPanel() {
   const selectedPlatform = platforms.find((p) => selectedPlatformIds.includes(p.id));
   const selectedFigure = figures.find((f) => selectedFigureIds.includes(f.id));
 
-  let title = 'STAGE SETTINGS';
+  let title = 'CONFIGURAÇÕES DO PALCO';
   let content: ReactNode;
 
   if (selectedPlatform) {
-    title = 'PLATFORM';
+    title = 'PRATICÁVEL';
     content = <PlatformPropertiesPanel platform={selectedPlatform} />;
   } else if (selectedFigure) {
-    title = 'FIGURE';
+    title = 'CENÁRIO';
     content = <FigurePropertiesPanel figure={selectedFigure} />;
   } else if (selected.length === 0) {
     content = <StageSettingsForm />;
   } else if (selected.length === 1) {
-    title = 'DEVICE';
+    title = 'EFEITO';
     content = <DevicePropertiesPanel device={selected[0]} />;
   } else {
-    title = 'SELECTION';
+    title = 'SELEÇÃO';
     content = <MultiSelectToolsPanel devices={selected} />;
   }
 

@@ -18,7 +18,7 @@ export function AppShell() {
   useHotkeyEngine();
 
   if (autosaveStatus === 'loading') {
-    return <div className="app-shell app-shell--loading">Loading project…</div>;
+    return <div className="app-shell app-shell--loading">Carregando projeto…</div>;
   }
 
   return (

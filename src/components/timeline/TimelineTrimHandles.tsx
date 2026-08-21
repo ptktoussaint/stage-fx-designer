@@ -56,13 +56,13 @@ export function TimelineTrimHandles({ pxPerSecond, height, duration }: TimelineT
         className="timeline-trim-handles__handle timeline-trim-handles__handle--start"
         style={{ left: trimStart * pxPerSecond }}
         onPointerDown={handlePointerDown('start')}
-        title={`Trim start: ${trimStart.toFixed(2)}s`}
+        title={`Início do corte: ${trimStart.toFixed(2)}s`}
       />
       <div
         className="timeline-trim-handles__handle timeline-trim-handles__handle--end"
         style={{ left: trimEnd * pxPerSecond }}
         onPointerDown={handlePointerDown('end')}
-        title={`Trim end: ${trimEnd.toFixed(2)}s`}
+        title={`Fim do corte: ${trimEnd.toFixed(2)}s`}
       />
     </div>
   );

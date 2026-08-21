@@ -11,6 +11,7 @@ import { DeviceMesh3D } from './DeviceMesh3D';
 import { PlatformMesh3D } from './PlatformMesh3D';
 import { FigureMesh3D } from './FigureMesh3D';
 import { SimulationEffects3D } from './SimulationEffects3D';
+import { offlineRenderRoot } from '../../engine/offlineRenderRoot';
 import './StageRenderer2D.css';
 
 interface DragState3D {
@@ -54,6 +55,8 @@ export function StageRenderer3D() {
   useEffect(() => {
     if (controlsRef.current) controlsRef.current.enabled = !dragState;
   }, [dragState]);
+
+  useEffect(() => () => offlineRenderRoot.set(null), []);
 
   const handleDragStart = (kind: DragState3D['kind'], id: string, position: Vector3) => {
     movedRef.current = false;
@@ -117,6 +120,13 @@ export function StageRenderer3D() {
         // buffer on some frames, which reads as dropped-fps stutter in the
         // recorded video even though the live view looks smooth.
         gl={{ preserveDrawingBuffer: true }}
+        // Hands the root state to the offline show renderer (engine/
+        // offlineShowRenderer.ts), which drives this same canvas with a
+        // virtual clock (frameloop 'never' + advance()) to render a video
+        // far faster than real playback speed.
+        onCreated={(state) => {
+          offlineRenderRoot.set(state);
+        }}
       >
         <color attach="background" args={['#0c0d0f']} />
         <ambientLight intensity={0.55} />

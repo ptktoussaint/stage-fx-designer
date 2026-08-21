@@ -29,8 +29,8 @@ class ClipRecorder {
   start(): string | null {
     if (this.isRecording()) return null;
     const canvas = document.querySelector<HTMLCanvasElement>(CANVAS_SELECTOR);
-    if (!canvas) return 'Switch to the 3D view to record — the 2D map can\'t be captured as video.';
-    if (typeof canvas.captureStream !== 'function') return 'This browser can\'t record canvas video.';
+    if (!canvas) return 'Mude para a vista 3D para gravar — o mapa 2D não pode ser capturado como vídeo.';
+    if (typeof canvas.captureStream !== 'function') return 'Este navegador não pode gravar vídeo do canvas.';
 
     const canvasStream = canvas.captureStream(30);
     const audioStream = audioEngine.getRecordingAudioStream();
@@ -46,10 +46,11 @@ class ClipRecorder {
       // clip had compared to the live view.
       this.recorder = new MediaRecorder(combined, {
         ...(mimeType ? { mimeType } : {}),
-        videoBitsPerSecond: 8_000_000,
+        videoBitsPerSecond: 16_000_000,
+        audioBitsPerSecond: 192_000,
       });
     } catch {
-      return 'Could not start the recorder.';
+      return 'Não foi possível iniciar o gravador.';
     }
     this.chunks = [];
     this.recorder.ondataavailable = (e) => {

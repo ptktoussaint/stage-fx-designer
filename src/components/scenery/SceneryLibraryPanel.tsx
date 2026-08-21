@@ -25,7 +25,7 @@ function PlatformPresetItem({ preset }: { preset: (typeof PLATFORM_PRESETS)[numb
   };
 
   return (
-    <div className="fx-item" onClick={handleClick} title={`Add ${preset.name}`}>
+    <div className="fx-item" onClick={handleClick} title={`Adicionar ${preset.name}`}>
       <span className="fx-item__icon" style={{ color: 'var(--text-secondary)' }}>
         <Icon name="platform" />
       </span>
@@ -47,7 +47,7 @@ function FigureItem({ definition }: { definition: FigureDefinition }) {
   };
 
   return (
-    <div className="fx-item" onClick={handleClick} title={`Add ${definition.name}`}>
+    <div className="fx-item" onClick={handleClick} title={`Adicionar ${definition.name}`}>
       <span className="fx-item__icon" style={{ color: 'var(--accent)' }}>
         <Icon name={definition.icon as never} />
       </span>
@@ -79,9 +79,9 @@ function SceneryCategory({ title, children }: { title: string; children: React.R
 export function SceneryLibraryPanel() {
   return (
     <div className="fx-library">
-      <div className="panel-title">SCENERY</div>
+      <div className="panel-title">CENÁRIO</div>
       <div className="fx-library__list">
-        <SceneryCategory title="Platforms">
+        <SceneryCategory title="Praticáveis">
           {PLATFORM_PRESETS.map((preset) => (
             <PlatformPresetItem key={preset.name} preset={preset} />
           ))}

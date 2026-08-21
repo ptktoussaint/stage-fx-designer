@@ -22,7 +22,7 @@ export class AddDeviceCommand implements Command {
       enabled: true,
       locked: false,
     };
-    this.label = `Add ${this.device.name}`;
+    this.label = `Adicionar ${this.device.name}`;
   }
 
   execute() {
@@ -49,7 +49,7 @@ export class RemoveDevicesCommand implements Command {
     this.prevDevices = project.devices;
     this.prevGroups = project.groups;
     this.prevEvents = project.timeline.events;
-    this.label = deviceIds.length > 1 ? `Delete ${deviceIds.length} Devices` : 'Delete Device';
+    this.label = deviceIds.length > 1 ? `Excluir ${deviceIds.length} Efeitos` : 'Excluir Efeito';
   }
 
   execute() {
@@ -79,7 +79,7 @@ export class MoveDeviceCommand implements Command {
     this.deviceId = deviceId;
     this.from = from;
     this.to = to;
-    this.label = 'Move Device';
+    this.label = 'Mover Efeito';
   }
 
   execute() {
@@ -119,7 +119,7 @@ export class MoveDevicesCommand implements Command {
 
   constructor(moves: DeviceMove[]) {
     this.moves = moves;
-    this.label = moves.length > 1 ? `Move ${moves.length} Devices` : 'Move Device';
+    this.label = moves.length > 1 ? `Mover ${moves.length} Efeitos` : 'Mover Efeito';
   }
 
   execute() {
@@ -141,7 +141,7 @@ export class UpdateDevicePropertyCommand implements Command {
   private readonly patchBefore: Partial<DeviceInstance>;
   private readonly patchAfter: Partial<DeviceInstance>;
 
-  constructor(deviceId: string, patchBefore: Partial<DeviceInstance>, patchAfter: Partial<DeviceInstance>, label = 'Edit Device') {
+  constructor(deviceId: string, patchBefore: Partial<DeviceInstance>, patchAfter: Partial<DeviceInstance>, label = 'Editar Efeito') {
     this.deviceId = deviceId;
     this.patchBefore = patchBefore;
     this.patchAfter = patchAfter;
@@ -166,7 +166,7 @@ export class DuplicateDevicesCommand implements Command {
 
   constructor(sourceIds: string[]) {
     this.sourceIds = sourceIds;
-    this.label = sourceIds.length > 1 ? `Duplicate ${sourceIds.length} Devices` : 'Duplicate Device';
+    this.label = sourceIds.length > 1 ? `Duplicar ${sourceIds.length} Efeitos` : 'Duplicar Efeito';
   }
 
   execute() {

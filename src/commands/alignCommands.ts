@@ -114,12 +114,12 @@ class RepositionCommand implements Command {
 
 export class AlignDevicesCommand extends RepositionCommand {
   constructor(deviceIds: string[], mode: AlignMode) {
-    super(`Align (${mode})`, deviceIds, (before) => computeAlignedPositions(before, mode));
+    super(`Alinhar (${mode})`, deviceIds, (before) => computeAlignedPositions(before, mode));
   }
 }
 
 export class DistributeDevicesCommand extends RepositionCommand {
   constructor(deviceIds: string[], axis: DistributeAxis) {
-    super(`Distribute ${axis}`, deviceIds, (before) => computeDistributedPositions(before, axis));
+    super(`Distribuir ${axis === 'horizontal' ? 'horizontalmente' : 'verticalmente'}`, deviceIds, (before) => computeDistributedPositions(before, axis));
   }
 }

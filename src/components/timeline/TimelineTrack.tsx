@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { addTimelineEvent, removeTimelineEvent, updateTimelineEvent } from '../../commands';
-import { moveTrackOrder, setTrackFolder } from '../../timeline/trackOrganization';
+import { moveTrackOrder, reorderTrack, setTrackFolder } from '../../timeline/trackOrganization';
 import type { TimelineEvent, TimelineFolder, TimelineTargetType } from '../../types';
 import { TimelineEventBlock } from './TimelineEventBlock';
 import { Icon } from '../common/Icon';
@@ -89,13 +89,38 @@ export function TimelineTrack({
   }, [pxPerSecond]);
 
   return (
-    <div className="timeline-track">
+    <div
+      className="timeline-track"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        const draggedKey = e.dataTransfer.getData('text/plain');
+        if (!draggedKey) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const insertAfter = e.clientY > rect.top + rect.height / 2;
+        reorderTrack(draggedKey, trackKey, insertAfter, resolvedOrder);
+      }}
+    >
       <div className="timeline-track__label" style={{ borderLeftColor: color }}>
+        <div
+          className="timeline-track__drag-handle"
+          draggable
+          title="Arraste para reordenar"
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/plain', trackKey);
+            e.dataTransfer.effectAllowed = 'move';
+          }}
+        >
+          <Icon name="drag-handle" size={11} />
+        </div>
         <div className="timeline-track__reorder">
           <button
             type="button"
             className="timeline-track__reorder-btn"
-            title="Move Up"
+            title="Mover para Cima"
             onClick={() => moveTrackOrder(trackKey, -1, resolvedOrder)}
           >
             <Icon name="chevron-right" size={9} className="timeline-track__chevron-up" />
@@ -103,7 +128,7 @@ export function TimelineTrack({
           <button
             type="button"
             className="timeline-track__reorder-btn"
-            title="Move Down"
+            title="Mover para Baixo"
             onClick={() => moveTrackOrder(trackKey, 1, resolvedOrder)}
           >
             <Icon name="chevron-right" size={9} className="timeline-track__chevron-down" />
@@ -116,7 +141,7 @@ export function TimelineTrack({
           <button
             type="button"
             className="timeline-track__reorder-btn"
-            title="Assign to Folder"
+            title="Atribuir a uma Lista"
             onClick={onToggleFolderMenu}
           >
             <Icon name="platform" size={10} />
@@ -131,7 +156,7 @@ export function TimelineTrack({
                   onToggleFolderMenu();
                 }}
               >
-                No Folder
+                Sem Lista
               </button>
               {folders.map((folder) => (
                 <button

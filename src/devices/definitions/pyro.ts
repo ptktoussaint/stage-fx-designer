@@ -3,7 +3,7 @@ import type { DeviceDefinition } from '../../types';
 export const pyroDevices: DeviceDefinition[] = [
   {
     id: 'micro-mine',
-    name: 'Micro Mine',
+    name: 'Micro Mina',
     category: 'PYRO_SIMULATION',
     icon: 'pyro',
     simulationType: 'mine',
@@ -12,14 +12,15 @@ export const pyroDevices: DeviceDefinition[] = [
     capabilities: {
       variableDuration: false,
       variableIntensity: true,
-      variableAngle: false,
+      variableAngle: true,
+      variableWidth: true,
       maxShots: 1,
     },
-    defaultParameters: { height: 3, intensity: 0.6 },
+    defaultParameters: { height: 3, intensity: 0.6, angle: 90, width: 1 },
   },
   {
     id: 'mine',
-    name: 'Mine',
+    name: 'Mina',
     category: 'PYRO_SIMULATION',
     icon: 'pyro',
     simulationType: 'mine',
@@ -28,14 +29,15 @@ export const pyroDevices: DeviceDefinition[] = [
     capabilities: {
       variableDuration: false,
       variableIntensity: true,
-      variableAngle: false,
+      variableAngle: true,
+      variableWidth: true,
       maxShots: 1,
     },
-    defaultParameters: { height: 6, intensity: 1 },
+    defaultParameters: { height: 6, intensity: 1, angle: 90, width: 1 },
   },
   {
     id: 'micro-comet',
-    name: 'Micro Comet',
+    name: 'Micro Cometa',
     category: 'PYRO_SIMULATION',
     icon: 'pyro',
     simulationType: 'comet',
@@ -52,7 +54,7 @@ export const pyroDevices: DeviceDefinition[] = [
   },
   {
     id: 'comet',
-    name: 'Comet',
+    name: 'Cometa',
     category: 'PYRO_SIMULATION',
     icon: 'pyro',
     simulationType: 'comet',

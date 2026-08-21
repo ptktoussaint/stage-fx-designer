@@ -21,7 +21,7 @@ export function LeftSidebar() {
           className={tab === 'scenery' ? 'fx-library__tab is-active' : 'fx-library__tab'}
           onClick={() => setTab('scenery')}
         >
-          Scenery
+          Cenário
         </button>
       </div>
       <div style={{ flex: 1, minHeight: 0 }}>{tab === 'fx' ? <FxLibraryPanel /> : <SceneryLibraryPanel />}</div>

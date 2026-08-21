@@ -10,8 +10,8 @@ export function HotkeysPanel() {
   if (hotkeys.length === 0) {
     return (
       <div className="hotkeys-panel__empty">
-        No hotkeys assigned yet. Select one or more devices on the stage, then use "Assign Hotkey" in
-        the Inspector.
+        Nenhum atalho atribuído ainda. Selecione um ou mais efeitos no palco e use "Atribuir Atalho" no
+        Inspetor.
       </div>
     );
   }
@@ -32,10 +32,10 @@ export function HotkeysPanel() {
                 onChange={(e) => updateHotkey(binding.id, { name: binding.name }, { name: e.target.value })}
               />
               <span className="hotkeys-panel__devices">
-                {deviceNames.length > 0 ? deviceNames.join(', ') : 'No devices'}
+                {deviceNames.length > 0 ? deviceNames.join(', ') : 'Nenhum efeito'}
               </span>
             </div>
-            <IconButton icon="trash" label="Remove Hotkey" onClick={() => removeHotkey(binding)} />
+            <IconButton icon="trash" label="Remover Atalho" onClick={() => removeHotkey(binding)} />
           </div>
         );
       })}

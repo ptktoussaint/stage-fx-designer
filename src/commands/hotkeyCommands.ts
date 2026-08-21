@@ -9,7 +9,7 @@ export class AssignHotkeyCommand implements Command {
 
   constructor(code: string, keyLabel: string, deviceIds: string[], name: string) {
     this.binding = { id: createId(), code, keyLabel, deviceIds, name };
-    this.label = `Assign Hotkey ${keyLabel}`;
+    this.label = `Atribuir Atalho ${keyLabel}`;
   }
 
   execute() {
@@ -27,7 +27,7 @@ export class RemoveHotkeyCommand implements Command {
 
   constructor(binding: HotkeyBinding) {
     this.binding = binding;
-    this.label = `Remove Hotkey ${binding.keyLabel}`;
+    this.label = `Remover Atalho ${binding.keyLabel}`;
   }
 
   execute() {
@@ -40,7 +40,7 @@ export class RemoveHotkeyCommand implements Command {
 }
 
 export class UpdateHotkeyCommand implements Command {
-  label = 'Edit Hotkey';
+  label = 'Editar Atalho';
   private readonly bindingId: string;
   private readonly before: Partial<HotkeyBinding>;
   private readonly after: Partial<HotkeyBinding>;

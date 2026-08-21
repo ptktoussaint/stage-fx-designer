@@ -43,7 +43,7 @@ export function HotkeyCaptureButton({ label, onCapture, disabled }: HotkeyCaptur
       disabled={disabled}
       onClick={() => setListening(true)}
     >
-      {listening ? 'Press any key… (Esc to cancel)' : label}
+      {listening ? 'Pressione qualquer tecla… (Esc para cancelar)' : label}
     </button>
   );
 }

@@ -6,7 +6,7 @@ import { createId } from '../utils/id';
 import { eventBus } from '../engine/eventBus';
 
 export class AddTimelineEventCommand implements Command {
-  label = 'Add Timeline Event';
+  label = 'Adicionar Marcação na Timeline';
   readonly event: TimelineEvent;
 
   constructor(event: Omit<TimelineEvent, 'id'>) {
@@ -25,7 +25,7 @@ export class AddTimelineEventCommand implements Command {
 }
 
 export class UpdateTimelineEventCommand implements Command {
-  label = 'Edit Timeline Event';
+  label = 'Editar Marcação na Timeline';
   private readonly eventId: string;
   private readonly before: Partial<TimelineEvent>;
   private readonly after: Partial<TimelineEvent>;
@@ -50,7 +50,7 @@ export class UpdateTimelineEventCommand implements Command {
 }
 
 export class RemoveTimelineEventCommand implements Command {
-  label = 'Delete Timeline Event';
+  label = 'Excluir Marcação da Timeline';
   private readonly removed: TimelineEvent;
 
   constructor(event: TimelineEvent) {
@@ -76,7 +76,7 @@ export class RemoveTimelineEventsCommand implements Command {
   constructor(eventIds: string[]) {
     this.eventIds = eventIds;
     this.prevEvents = useProjectStore.getState().project.timeline.events;
-    this.label = eventIds.length > 1 ? `Delete ${eventIds.length} Cues` : 'Delete Cue';
+    this.label = eventIds.length > 1 ? `Excluir ${eventIds.length} Marcações` : 'Excluir Marcação';
   }
 
   execute() {

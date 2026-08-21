@@ -20,7 +20,7 @@ export class AddFigureCommand implements Command {
       locked: false,
       color: DEFAULT_FIGURE_COLOR,
     };
-    this.label = `Add ${this.figure.name}`;
+    this.label = `Adicionar ${this.figure.name}`;
   }
 
   execute() {
@@ -40,7 +40,7 @@ export class RemoveFiguresCommand implements Command {
   constructor(figureIds: string[]) {
     this.figureIds = figureIds;
     this.prevFigures = useProjectStore.getState().project.figures;
-    this.label = figureIds.length > 1 ? `Delete ${figureIds.length} Figures` : 'Delete Figure';
+    this.label = figureIds.length > 1 ? `Excluir ${figureIds.length} Cenários` : 'Excluir Cenário';
   }
 
   execute() {
@@ -64,7 +64,7 @@ export class MoveFigureCommand implements Command {
     this.figureId = figureId;
     this.from = from;
     this.to = to;
-    this.label = 'Move Figure';
+    this.label = 'Mover Cenário';
   }
 
   execute() {
@@ -91,7 +91,7 @@ export class UpdateFigureCommand implements Command {
     figureId: string,
     patchBefore: Partial<FigureInstance>,
     patchAfter: Partial<FigureInstance>,
-    label = 'Edit Figure',
+    label = 'Editar Cenário',
   ) {
     this.figureId = figureId;
     this.patchBefore = patchBefore;

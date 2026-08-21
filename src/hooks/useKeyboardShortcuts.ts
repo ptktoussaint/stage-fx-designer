@@ -187,7 +187,7 @@ export function useKeyboardShortcuts(): void {
       if (e.key.toLowerCase() === 'g') {
         const selected = useSelectionStore.getState().selectedDeviceIds;
         if (selected.length > 0) {
-          const name = window.prompt('Group name');
+          const name = window.prompt('Nome do grupo');
           if (name && name.trim()) {
             const groupCount = useProjectStore.getState().project.groups.length;
             createGroup(name.trim(), selected, GROUP_COLORS[groupCount % GROUP_COLORS.length]);

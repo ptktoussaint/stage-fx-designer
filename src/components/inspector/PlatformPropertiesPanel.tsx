@@ -20,29 +20,29 @@ export function PlatformPropertiesPanel({ platform }: { platform: PlatformInstan
           onChange={(e) => useProjectStore.getState()._updatePlatform(platform.id, { name: e.target.value })}
         />
       </div>
-      <div className="inspector-subtle">Platform / Praticável</div>
+      <div className="inspector-subtle">Praticável (Palco)</div>
 
       <div className="inspector-section__row inspector-section__row--gap">
         <IconButton
           icon={platform.locked ? 'lock' : 'unlock'}
-          label={platform.locked ? 'Locked' : 'Unlocked'}
+          label={platform.locked ? 'Travado' : 'Destravado'}
           active={platform.locked}
-          onClick={() => commit({ locked: platform.locked }, { locked: !platform.locked }, 'Toggle Lock')}
+          onClick={() => commit({ locked: platform.locked }, { locked: !platform.locked }, 'Travar/Destravar')}
         />
         <label className="inspector-checkbox">
-          Color
+          Cor
           <input
             type="color"
             value={platform.color}
-            onChange={(e) => commit({ color: platform.color }, { color: e.target.value }, 'Edit Color')}
+            onChange={(e) => commit({ color: platform.color }, { color: e.target.value }, 'Editar Cor')}
           />
         </label>
-        <IconButton icon="trash" label="Delete" onClick={() => removePlatforms([platform.id])} />
+        <IconButton icon="trash" label="Excluir" onClick={() => removePlatforms([platform.id])} />
       </div>
 
-      <div className="inspector-group-title">Dimensions (meters)</div>
+      <div className="inspector-group-title">Dimensões (metros)</div>
       <NumberField
-        label="Width"
+        label="Largura"
         value={platform.dimensions.width}
         min={0.1}
         step={0.1}
@@ -51,13 +51,13 @@ export function PlatformPropertiesPanel({ platform }: { platform: PlatformInstan
           commit(
             { dimensions: platform.dimensions },
             { dimensions: { ...platform.dimensions, width } },
-            'Resize Platform',
+            'Redimensionar Praticável',
           )
         }
         onChange={() => {}}
       />
       <NumberField
-        label="Height"
+        label="Altura"
         value={platform.dimensions.height}
         min={0.05}
         step={0.05}
@@ -66,13 +66,13 @@ export function PlatformPropertiesPanel({ platform }: { platform: PlatformInstan
           commit(
             { dimensions: platform.dimensions },
             { dimensions: { ...platform.dimensions, height } },
-            'Resize Platform',
+            'Redimensionar Praticável',
           )
         }
         onChange={() => {}}
       />
       <NumberField
-        label="Depth"
+        label="Profundidade"
         value={platform.dimensions.depth}
         min={0.1}
         step={0.1}
@@ -81,37 +81,37 @@ export function PlatformPropertiesPanel({ platform }: { platform: PlatformInstan
           commit(
             { dimensions: platform.dimensions },
             { dimensions: { ...platform.dimensions, depth } },
-            'Resize Platform',
+            'Redimensionar Praticável',
           )
         }
         onChange={() => {}}
       />
 
-      <div className="inspector-group-title">Position (meters)</div>
+      <div className="inspector-group-title">Posição (metros)</div>
       <NumberField
-        label="X"
+        label="Horizontal"
         value={platform.position.x}
-        onCommit={(x) => commit({ position: platform.position }, { position: { ...platform.position, x } }, 'Move Platform')}
+        onCommit={(x) => commit({ position: platform.position }, { position: { ...platform.position, x } }, 'Mover Praticável')}
         onChange={() => {}}
       />
       <NumberField
-        label="Y"
+        label="Distância"
         value={platform.position.y}
-        onCommit={(y) => commit({ position: platform.position }, { position: { ...platform.position, y } }, 'Move Platform')}
+        onCommit={(y) => commit({ position: platform.position }, { position: { ...platform.position, y } }, 'Mover Praticável')}
         onChange={() => {}}
       />
       <NumberField
-        label="Z (base height)"
+        label="Altura da Base"
         value={platform.position.z}
-        onCommit={(z) => commit({ position: platform.position }, { position: { ...platform.position, z } }, 'Move Platform')}
+        onCommit={(z) => commit({ position: platform.position }, { position: { ...platform.position, z } }, 'Mover Praticável')}
         onChange={() => {}}
       />
       <NumberField
-        label="Rotation"
+        label="Rotação"
         value={platform.rotation.z}
         suffix="°"
         step={5}
-        onCommit={(z) => commit({ rotation: platform.rotation }, { rotation: { ...platform.rotation, z } }, 'Rotate Platform')}
+        onCommit={(z) => commit({ rotation: platform.rotation }, { rotation: { ...platform.rotation, z } }, 'Rotacionar Praticável')}
         onChange={() => {}}
       />
     </div>

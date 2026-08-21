@@ -110,6 +110,13 @@ class AudioEngine {
     return this.buffer !== null;
   }
 
+  /** The raw decoded PCM buffer, if a track is loaded — used by the offline
+   * show renderer to encode audio directly instead of capturing real-time
+   * playback (see engine/offlineShowRenderer.ts). */
+  getDecodedBuffer(): AudioBuffer | null {
+    return this.buffer;
+  }
+
   getCurrentTime(): number | null {
     if (!this.buffer) return null;
     if (!this.playing || !this.context) return this.startOffset;

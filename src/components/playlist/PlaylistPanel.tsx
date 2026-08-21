@@ -40,7 +40,7 @@ export function PlaylistPanel() {
   useEffect(refresh, []);
 
   const handleSaveCurrent = async () => {
-    const name = window.prompt('Save current show as', project.name);
+    const name = window.prompt('Salvar show atual como', project.name);
     if (!name || !name.trim()) return;
     setIsSaving(true);
     try {
@@ -79,7 +79,7 @@ export function PlaylistPanel() {
   };
 
   const handleDelete = async (entry: PlaylistEntry) => {
-    if (!window.confirm(`Remove "${entry.name}" from the playlist? This can't be undone.`)) return;
+    if (!window.confirm(`Remover "${entry.name}" da playlist? Isso não pode ser desfeito.`)) return;
     await removePlaylistEntry(entry.id);
     refresh();
   };
@@ -87,13 +87,13 @@ export function PlaylistPanel() {
   return (
     <div className="playlist-panel">
       <button type="button" className="playlist-panel__save-button" onClick={handleSaveCurrent} disabled={isSaving}>
-        {isSaving ? 'Saving…' : `Save "${project.name}" to Playlist`}
+        {isSaving ? 'Salvando…' : `Salvar "${project.name}" na Playlist`}
       </button>
 
       {entries.length === 0 ? (
         <div className="playlist-panel__empty">
-          No shows saved yet. Build a show, then save it here — click it later to reopen it with its
-          effects already in place.
+          Nenhum show salvo ainda. Monte um show e salve aqui — depois é só clicar para reabri-lo com
+          os efeitos já no lugar.
         </div>
       ) : (
         <div className="playlist-panel__list">
@@ -107,15 +107,15 @@ export function PlaylistPanel() {
               >
                 <span className="playlist-panel__name">{entry.name}</span>
                 <span className="playlist-panel__meta">
-                  {entry.project.devices.length} device{entry.project.devices.length === 1 ? '' : 's'} ·{' '}
-                  {entry.project.timeline.events.length} cue{entry.project.timeline.events.length === 1 ? '' : 's'} ·{' '}
+                  {entry.project.devices.length} efeito{entry.project.devices.length === 1 ? '' : 's'} ·{' '}
+                  {entry.project.timeline.events.length} marcaç{entry.project.timeline.events.length === 1 ? 'ão' : 'ões'} ·{' '}
                   {new Date(entry.savedAt).toLocaleDateString()}
                 </span>
               </button>
               {loadingId === entry.id ? (
-                <span className="playlist-panel__loading">Loading…</span>
+                <span className="playlist-panel__loading">Carregando…</span>
               ) : (
-                <IconButton icon="trash" label="Remove from Playlist" onClick={() => handleDelete(entry)} />
+                <IconButton icon="trash" label="Remover da Playlist" onClick={() => handleDelete(entry)} />
               )}
             </div>
           ))}

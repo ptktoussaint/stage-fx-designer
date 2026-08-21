@@ -3,7 +3,7 @@ import type { DeviceDefinition } from '../../types';
 export const co2Devices: DeviceDefinition[] = [
   {
     id: 'co2-jet',
-    name: 'CO₂ Jet',
+    name: 'Jato de CO₂',
     category: 'CO2',
     icon: 'co2',
     simulationType: 'co2',

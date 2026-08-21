@@ -24,10 +24,23 @@ import type { DeviceInstance } from '../../types';
 const GROUP_COLORS = ['#4f8cff', '#e0693f', '#4bbf7a', '#d6a23c', '#a06fe0', '#4fb8d6'];
 
 const SHAPE_OPTIONS: { value: string; label: string; icon: IconName }[] = [
-  { value: 'open', label: 'Open', icon: 'shape-open' },
+  { value: 'open', label: 'Aberto', icon: 'shape-open' },
   { value: 'cone', label: 'Cone (\\/)', icon: 'shape-cone' },
-  { value: 'invertedCone', label: 'Inverted Cone (/\\)', icon: 'shape-inverted-cone' },
+  { value: 'invertedCone', label: 'Cone Invertido (/\\)', icon: 'shape-inverted-cone' },
 ];
+
+/** Friendly Portuguese labels for the generic customProperties keys shown
+ * in the Parameters section below — the underlying data keys (height,
+ * angle, width, ...) stay in English since they're the stable persisted
+ * schema (project JSON, migrations, command payloads); only the on-screen
+ * label changes. */
+const PARAM_LABEL_PT: Record<string, string> = {
+  height: 'Altura do Efeito',
+  duration: 'Duração do Efeito',
+  intensity: 'Intensidade',
+  angle: 'Ângulo do Efeito',
+  width: 'Largura do Efeito',
+};
 
 export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
   const definition = getDeviceDefinition(device.definitionId);
@@ -38,7 +51,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
   const [newGroupName, setNewGroupName] = useState('');
   const deviceHotkeys = hotkeys.filter((h) => h.deviceIds.includes(device.id));
 
-  if (!definition) return <div className="inspector-empty">Unknown device type.</div>;
+  if (!definition) return <div className="inspector-empty">Tipo de efeito desconhecido.</div>;
 
   const commit = (patchBefore: Partial<DeviceInstance>, patchAfter: Partial<DeviceInstance>, label?: string) =>
     updateDeviceProperty(device.id, patchBefore, patchAfter, label);
@@ -57,7 +70,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
       <div className="inspector-section__row inspector-section__row--gap">
         <IconButton
           icon={device.locked ? 'lock' : 'unlock'}
-          label={device.locked ? 'Locked' : 'Unlocked'}
+          label={device.locked ? 'Travado' : 'Destravado'}
           active={device.locked}
           onClick={() => setDevicesLocked([device.id], !device.locked)}
         />
@@ -65,62 +78,62 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
           <input
             type="checkbox"
             checked={device.enabled}
-            onChange={(e) => commit({ enabled: device.enabled }, { enabled: e.target.checked }, 'Toggle Enabled')}
+            onChange={(e) => commit({ enabled: device.enabled }, { enabled: e.target.checked }, 'Ativar/Desativar')}
           />
-          Enabled
+          Ativado
         </label>
-        <IconButton icon="duplicate" label="Duplicate" onClick={() => duplicateDevices([device.id])} />
-        <IconButton icon="trash" label="Delete" onClick={() => removeDevices([device.id])} />
+        <IconButton icon="duplicate" label="Duplicar" onClick={() => duplicateDevices([device.id])} />
+        <IconButton icon="trash" label="Excluir" onClick={() => removeDevices([device.id])} />
       </div>
 
       <div className="inspector-section__row inspector-section__row--gap">
-        <label className="inspector-checkbox" title="Color of the machine itself — the 2D icon and 3D model">
-          Object Color
+        <label className="inspector-checkbox" title="Cor da máquina em si — o ícone 2D e o modelo 3D">
+          Cor do Objeto
           <input
             type="color"
             value={device.bodyColor ?? CATEGORY_COLOR_HEX[definition.category]}
-            onChange={(e) => commit({ bodyColor: device.bodyColor }, { bodyColor: e.target.value }, 'Edit Object Color')}
+            onChange={(e) => commit({ bodyColor: device.bodyColor }, { bodyColor: e.target.value }, 'Editar Cor do Objeto')}
           />
         </label>
-        <label className="inspector-checkbox" title="Color of the simulated flame/spark/confetti this device fires">
-          Effect Color
+        <label className="inspector-checkbox" title="Cor da chama/faísca/confete simulado que este efeito dispara">
+          Cor do Efeito
           <input
             type="color"
             value={device.color ?? CATEGORY_COLOR_HEX[definition.category]}
-            onChange={(e) => commit({ color: device.color }, { color: e.target.value }, 'Edit Effect Color')}
+            onChange={(e) => commit({ color: device.color }, { color: e.target.value }, 'Editar Cor do Efeito')}
           />
         </label>
       </div>
 
-      <div className="inspector-group-title">Position (meters)</div>
+      <div className="inspector-group-title">Posição (metros)</div>
       <NumberField
-        label="X"
+        label="Horizontal"
         value={device.position.x}
-        onCommit={(x) => commit({ position: device.position }, { position: { ...device.position, x } }, 'Move Device')}
+        onCommit={(x) => commit({ position: device.position }, { position: { ...device.position, x } }, 'Mover Efeito')}
         onChange={() => {}}
       />
       <NumberField
-        label="Y"
+        label="Distância"
         value={device.position.y}
-        onCommit={(y) => commit({ position: device.position }, { position: { ...device.position, y } }, 'Move Device')}
+        onCommit={(y) => commit({ position: device.position }, { position: { ...device.position, y } }, 'Mover Efeito')}
         onChange={() => {}}
       />
       <NumberField
-        label="Z (height)"
+        label="Altura"
         value={device.position.z}
-        onCommit={(z) => commit({ position: device.position }, { position: { ...device.position, z } }, 'Move Device')}
+        onCommit={(z) => commit({ position: device.position }, { position: { ...device.position, z } }, 'Mover Efeito')}
         onChange={() => {}}
       />
       <NumberField
-        label="Rotation"
+        label="Rotação"
         value={device.rotation.z}
         suffix="°"
         step={5}
-        onCommit={(z) => commit({ rotation: device.rotation }, { rotation: { ...device.rotation, z } }, 'Rotate Device')}
+        onCommit={(z) => commit({ rotation: device.rotation }, { rotation: { ...device.rotation, z } }, 'Rotacionar Efeito')}
         onChange={() => {}}
       />
 
-      <div className="inspector-group-title">Parameters</div>
+      <div className="inspector-group-title">Parâmetros</div>
       {Object.entries(device.customProperties).map(([key, value]) => {
         if (key === 'shape' && typeof value === 'string') {
           return (
@@ -135,7 +148,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
                     commit(
                       { customProperties: device.customProperties },
                       { customProperties: { ...device.customProperties, shape: opt.value } },
-                      'Edit Shape',
+                      'Editar Formato',
                     )
                   }
                 />
@@ -147,13 +160,13 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
           return (
             <NumberField
               key={key}
-              label={key}
+              label={PARAM_LABEL_PT[key] ?? key}
               value={value}
               onCommit={(next) =>
                 commit(
                   { customProperties: device.customProperties },
                   { customProperties: { ...device.customProperties, [key]: next } },
-                  'Edit Parameter',
+                  'Editar Parâmetro',
                 )
               }
               onChange={() => {}}
@@ -170,24 +183,24 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
                   commit(
                     { customProperties: device.customProperties },
                     { customProperties: { ...device.customProperties, [key]: e.target.checked } },
-                    'Edit Parameter',
+                    'Editar Parâmetro',
                   )
                 }
               />
-              {key}
+              {PARAM_LABEL_PT[key] ?? key}
             </label>
           );
         }
         return (
           <div key={key} className="number-field">
-            <span className="number-field__label">{key}</span>
+            <span className="number-field__label">{PARAM_LABEL_PT[key] ?? key}</span>
             <input
               value={String(value)}
               onChange={(e) =>
                 commit(
                   { customProperties: device.customProperties },
                   { customProperties: { ...device.customProperties, [key]: e.target.value } },
-                  'Edit Parameter',
+                  'Editar Parâmetro',
                 )
               }
             />
@@ -198,7 +211,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
       <button
         type="button"
         className="inspector-trigger-button"
-        title="Fires the same SIMULATION_TRIGGER event the Show Engine emits during playback, without needing a timeline event"
+        title="Dispara o mesmo evento que o Motor do Show emite durante a reprodução, sem precisar de uma marcação na timeline"
         onClick={() =>
           eventBus.emit('SIMULATION_TRIGGER', {
             deviceId: device.id,
@@ -208,13 +221,13 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
           })
         }
       >
-        Test Trigger
+        Testar Disparo
       </button>
 
       <button
         type="button"
         className="inspector-trigger-button inspector-trigger-button--cue"
-        title="Adds a timeline event for this device at the current playhead position"
+        title="Adiciona uma marcação na timeline para este efeito na posição atual do cursor"
         onClick={() =>
           addTimelineEvent({
             time: currentTime,
@@ -226,26 +239,26 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
           })
         }
       >
-        Add Cue at {formatTime(Math.max(0, currentTime - trimStart))}
+        Adicionar Marcação em {formatTime(Math.max(0, currentTime - trimStart))}
       </button>
 
-      <div className="inspector-group-title">Hotkeys (live trigger)</div>
+      <div className="inspector-group-title">Atalhos (disparo ao vivo)</div>
       {deviceHotkeys.map((binding) => (
         <div key={binding.id} className="inspector-section__row inspector-section__row--gap">
           <span className="inspector-hotkey-chip">{binding.keyLabel}</span>
           <span className="inspector-subtle" style={{ margin: 0, flex: 1 }}>
             {binding.name}
           </span>
-          <IconButton icon="trash" label="Remove Hotkey" onClick={() => removeHotkey(binding)} />
+          <IconButton icon="trash" label="Remover Atalho" onClick={() => removeHotkey(binding)} />
         </div>
       ))}
       <HotkeyCaptureButton
-        label="Assign Hotkey"
+        label="Atribuir Atalho"
         onCapture={(code, keyLabel) => assignHotkey(code, keyLabel, [device.id], device.name)}
       />
 
-      <div className="inspector-group-title">Groups</div>
-      {groups.length === 0 && <div className="inspector-subtle">No groups yet.</div>}
+      <div className="inspector-group-title">Grupos</div>
+      {groups.length === 0 && <div className="inspector-subtle">Nenhum grupo ainda.</div>}
       {groups.map((group) => {
         const isMember = device.groupIds.includes(group.id);
         return (
@@ -257,7 +270,7 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
                 const groupIds = isMember
                   ? device.groupIds.filter((id) => id !== group.id)
                   : [...device.groupIds, group.id];
-                commit({ groupIds: device.groupIds }, { groupIds }, isMember ? 'Remove from Group' : 'Add to Group');
+                commit({ groupIds: device.groupIds }, { groupIds }, isMember ? 'Remover do Grupo' : 'Adicionar ao Grupo');
               }}
             />
             <span className="inspector-group-swatch" style={{ background: group.color }} />
@@ -268,13 +281,13 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
       <div className="inspector-section__row inspector-section__row--gap">
         <input
           className="inspector-text-input"
-          placeholder="New group name"
+          placeholder="Nome do novo grupo"
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}
         />
         <IconButton
           icon="group"
-          label="Create Group"
+          label="Criar Grupo"
           onClick={() => {
             if (!newGroupName.trim()) return;
             createGroup(newGroupName.trim(), [device.id], GROUP_COLORS[groups.length % GROUP_COLORS.length]);

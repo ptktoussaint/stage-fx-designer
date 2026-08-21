@@ -67,7 +67,7 @@ export function TopToolbar() {
   };
 
   const handleNew = () => {
-    if (!window.confirm('Start a new project? Unsaved changes in the current one will be lost.')) return;
+    if (!window.confirm('Iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.')) return;
     setProject(createEmptyProject());
     useHistoryStore.getState().clear();
     usePlaybackStore.getState().stop();
@@ -102,14 +102,14 @@ export function TopToolbar() {
         useHistoryStore.getState().clear();
       }
     } catch {
-      window.alert('Could not read this project file.');
+      window.alert('Não foi possível ler este arquivo de projeto.');
     }
   };
 
   return (
     <header className="top-toolbar">
       <div className="top-toolbar__group">
-        <span className="top-toolbar__project-label">PROJECT</span>
+        <span className="top-toolbar__project-label">PROJETO</span>
         <input
           className="top-toolbar__project-name"
           value={project.name}
@@ -120,9 +120,9 @@ export function TopToolbar() {
       <div className="top-toolbar__divider" />
 
       <div className="top-toolbar__group">
-        <IconButton icon="file-plus" label="New" onClick={handleNew} />
-        <IconButton icon="folder-open" label="Open" onClick={handleOpen} />
-        <IconButton icon="save" label="Save" onClick={handleSave} />
+        <IconButton icon="file-plus" label="Novo" onClick={handleNew} />
+        <IconButton icon="folder-open" label="Abrir" onClick={handleOpen} />
+        <IconButton icon="save" label="Salvar" onClick={handleSave} />
         <input
           ref={fileInputRef}
           type="file"
@@ -135,8 +135,8 @@ export function TopToolbar() {
       <div className="top-toolbar__divider" />
 
       <div className="top-toolbar__group">
-        <IconButton icon="undo" label={undoLabel ? `Undo ${undoLabel}` : 'Undo'} onClick={undo} disabled={!canUndo} />
-        <IconButton icon="redo" label={redoLabel ? `Redo ${redoLabel}` : 'Redo'} onClick={redo} disabled={!canRedo} />
+        <IconButton icon="undo" label={undoLabel ? `Desfazer ${undoLabel}` : 'Desfazer'} onClick={undo} disabled={!canUndo} />
+        <IconButton icon="redo" label={redoLabel ? `Refazer ${redoLabel}` : 'Refazer'} onClick={redo} disabled={!canRedo} />
       </div>
 
       <div className="top-toolbar__divider" />
@@ -164,13 +164,13 @@ export function TopToolbar() {
         <span className="top-toolbar__time">{formatTime(Math.max(0, currentTime - trimStart))}</span>
         <IconButton
           icon={isPlaying ? 'stop' : 'play'}
-          label={isPlaying ? 'Stop' : 'Play'}
+          label={isPlaying ? 'Parar' : 'Reproduzir'}
           active={isPlaying}
           onClick={() => (isPlaying ? stop() : togglePlay())}
         />
         <IconButton
           icon="record"
-          label={isRecording ? 'Stop Recording Hotkey Cues' : 'Record Hotkey Cues to Timeline'}
+          label={isRecording ? 'Parar Gravação de Marcações por Atalho' : 'Gravar Marcações por Atalho na Timeline'}
           active={isRecording}
           onClick={toggleRecording}
           className={isRecording ? 'top-toolbar__record-active' : undefined}
@@ -179,8 +179,8 @@ export function TopToolbar() {
           icon="record-clip"
           label={
             isClipRecording
-              ? 'Stop Recording Clip (saves a .webm video)'
-              : 'Record Clip (video of the 3D show + audio)'
+              ? 'Parar Gravação do Vídeo (salva um arquivo .webm)'
+              : 'Gravar Vídeo (grava o show em 3D + áudio em tempo real)'
           }
           active={isClipRecording}
           onClick={handleToggleClipRecording}
@@ -192,18 +192,18 @@ export function TopToolbar() {
 
       <div className="top-toolbar__group">
         <IconButton icon="playlist" label="Playlist" onClick={() => setPlaylistOpen(true)} />
-        <IconButton icon="keyboard" label="Hotkeys" onClick={() => setHotkeysPanelOpen(true)} />
-        <IconButton icon="download" label="Export" onClick={handleExport} />
-        <IconButton icon="settings" label="Settings" onClick={() => setSettingsOpen(true)} />
+        <IconButton icon="keyboard" label="Atalhos" onClick={() => setHotkeysPanelOpen(true)} />
+        <IconButton icon="download" label="Exportar" onClick={handleExport} />
+        <IconButton icon="settings" label="Configurações" onClick={() => setSettingsOpen(true)} />
       </div>
 
       {isSettingsOpen && (
-        <Modal title="Stage Settings" onClose={() => setSettingsOpen(false)}>
+        <Modal title="Configurações do Palco" onClose={() => setSettingsOpen(false)}>
           <StageSettingsForm />
         </Modal>
       )}
       {isHotkeysPanelOpen && (
-        <Modal title="Hotkeys" onClose={() => setHotkeysPanelOpen(false)}>
+        <Modal title="Atalhos de Teclado" onClose={() => setHotkeysPanelOpen(false)}>
           <HotkeysPanel />
         </Modal>
       )}
