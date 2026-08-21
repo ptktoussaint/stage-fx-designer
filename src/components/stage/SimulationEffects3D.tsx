@@ -44,8 +44,27 @@ const FAMILY_BY_SIMULATION_TYPE: Record<SimulationType, EffectFamily> = {
  */
 const MAX_CONCURRENT_EFFECTS = 40;
 
+/**
+ * Simulation types whose visual is a continuous stream rather than a
+ * one-off burst — a held hotkey should read as one sustained jet, not a
+ * pile of separate mini-effects stacking up every retrigger.
+ */
+const CONTINUOUS_HOLD_TYPES = new Set<SimulationType>(['co2', 'spark']);
+
+/**
+ * How long a continuous-hold effect (CO2/spark) stays sustained after a
+ * trigger before it starts decaying. Comfortably longer than the hotkey
+ * engine's own HOLD_REPEAT_INTERVAL_MS (250ms) so consecutive retriggers
+ * from a held key always land before the previous one runs out and refresh
+ * the same instance's holdUntil in place — instead of each retrigger
+ * spawning its own independent burst, which is what read as "several mini
+ * triggers" rather than one held effect.
+ */
+const HOLD_GRACE_MS = 400;
+
 interface ActiveEffect {
   id: string;
+  deviceId: string;
   family: EffectFamily;
   position: [number, number, number];
   color: string;
@@ -55,6 +74,7 @@ interface ActiveEffect {
   width: number;
   shape?: EffectShape;
   simulationType: SimulationType;
+  holdUntil: number;
 }
 
 export function SimulationEffects3D() {
@@ -79,13 +99,30 @@ export function SimulationEffects3D() {
         const width = typeof parameters.width === 'number' ? parameters.width : 1;
         const shape = typeof parameters.shape === 'string' ? (parameters.shape as EffectShape) : undefined;
 
+        const position: [number, number, number] = [device.position.x, originY, device.position.y];
+        const holdUntil = performance.now() + HOLD_GRACE_MS;
+
         setActive((prev) => {
+          if (CONTINUOUS_HOLD_TYPES.has(simulationType as SimulationType)) {
+            const existingIndex = prev.findIndex((e) => e.deviceId === deviceId && e.simulationType === simulationType);
+            if (existingIndex !== -1) {
+              // Same device firing again while its previous jet is still
+              // active — extend it in place (same id, same mounted
+              // component/animation state) instead of stacking a new
+              // instance on top.
+              const next = [...prev];
+              next[existingIndex] = { ...next[existingIndex], position, color, height, angle, yaw: device.rotation.z, width, shape, holdUntil };
+              return next;
+            }
+          }
+
           const next = [
             ...prev,
             {
               id: createId(),
+              deviceId,
               family,
-              position: [device.position.x, originY, device.position.y] as [number, number, number],
+              position,
               color,
               height,
               angle,
@@ -93,6 +130,7 @@ export function SimulationEffects3D() {
               width,
               shape,
               simulationType: simulationType as SimulationType,
+              holdUntil,
             },
           ];
           return next.length > MAX_CONCURRENT_EFFECTS ? next.slice(next.length - MAX_CONCURRENT_EFFECTS) : next;
@@ -116,6 +154,7 @@ export function SimulationEffects3D() {
           width: effect.width,
           shape: effect.shape,
           simulationType: effect.simulationType,
+          holdUntil: effect.holdUntil,
           onDone: remove,
         };
         switch (effect.family) {

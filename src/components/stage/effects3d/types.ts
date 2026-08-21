@@ -27,6 +27,13 @@ export interface Effect3DProps {
   shape?: EffectShape;
   /** Drives per-type styling within a shared family — e.g. EffectJet renders flame/co2/spark differently. */
   simulationType: SimulationType;
+  /** For continuous-hold effects (CO2/spark jets): timestamp (performance.now()
+   * clock) up to which the effect should stay sustained at full strength —
+   * refreshed forward on every retrigger while a hotkey is held, so the same
+   * mounted instance keeps flowing instead of a new one stacking on top.
+   * Once `performance.now()` passes it, the effect decays and finishes.
+   * Ignored by effect families that don't support continuous hold. */
+  holdUntil?: number;
   onDone: (id: string) => void;
 }
 
