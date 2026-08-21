@@ -128,10 +128,52 @@ async function pickOutputTarget(fileNameBase: string): Promise<OutputTarget> {
   }
 }
 
+const FORCE_YIELD_INTERVAL_MS = 150;
+
+/**
+ * `await somePromise` only truly hands control back to the browser (letting
+ * it run garbage collection, among other housekeeping) when that promise
+ * resolves via a real macrotask — e.g. a `setTimeout`. An `await` on a
+ * promise that resolves through microtasks alone (which is exactly what
+ * `waitForBackpressure` below does whenever nothing is backed up — the
+ * common case) never actually yields to the browser at all.
+ *
+ * For a short show that's irrelevant. For an 11-minute one at 30fps —
+ * ~20,000 iterations — it means this loop can run for long stretches
+ * without ever giving the browser a chance to reclaim the VideoFrames,
+ * Three.js scratch objects, and encoder-internal buffers each iteration
+ * allocates. Nothing here individually leaks, but with no opportunity to
+ * collect any of it, memory climbs for the entire length of the render and
+ * eventually exhausts the tab — which is exactly why this kept crashing
+ * near the end even after the two write-side fixes (disk streaming, write
+ * backpressure) that came before it: neither one forces a real yield when
+ * the encoder and disk are actually keeping up fine.
+ *
+ * This forces one on a wall-clock cadence — not tied to frame count, so it
+ * behaves the same whether a frame takes a fraction of a millisecond or
+ * several — regardless of whether backpressure would have caused one
+ * anyway.
+ */
+function createYieldGate(): () => Promise<void> {
+  let last = performance.now();
+  return async () => {
+    if (performance.now() - last >= FORCE_YIELD_INTERVAL_MS) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      last = performance.now();
+    }
+  };
+}
+
 /** Pauses until both the encoder's own queue and (when writing straight to
  * disk) the number of in-flight file writes have drained enough to keep
- * memory bounded, no matter how much faster than the disk this loop runs. */
-async function waitForBackpressure(encoder: VideoEncoder | AudioEncoder, output: OutputTarget): Promise<void> {
+ * memory bounded, no matter how much faster than the disk this loop runs —
+ * and, via `forceYield`, at least periodically even when neither is. */
+async function waitForBackpressure(
+  encoder: VideoEncoder | AudioEncoder,
+  output: OutputTarget,
+  forceYield: () => Promise<void>,
+): Promise<void> {
+  await forceYield();
   while (encoder.encodeQueueSize > 6 || (output.kind === 'file' && output.stream.pendingWrites > MAX_PENDING_FILE_WRITES)) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
@@ -146,6 +188,7 @@ async function encodeAudioBuffer(
   endTime: number,
   encoder: AudioEncoder,
   output: OutputTarget,
+  forceYield: () => Promise<void>,
 ): Promise<void> {
   const sampleRate = buffer.sampleRate;
   const startSample = Math.max(0, Math.floor(startTime * sampleRate));
@@ -168,7 +211,7 @@ async function encodeAudioBuffer(
     });
     encoder.encode(audioData);
     audioData.close();
-    await waitForBackpressure(encoder, output);
+    await waitForBackpressure(encoder, output, forceYield);
   }
 }
 
@@ -236,6 +279,7 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
 
   let controls: OrbitControlsImpl | null = null;
   let previousCamera: { position: [number, number, number]; target: [number, number, number] } | null = null;
+  const forceYield = createYieldGate();
 
   try {
     const muxer = new Muxer({
@@ -329,12 +373,12 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
       frame.close();
 
-      await waitForBackpressure(videoEncoder, output);
+      await waitForBackpressure(videoEncoder, output, forceYield);
       options.onProgress?.((i + 1) / frameCount);
     }
 
     if (hasAudio && audioEncoder) {
-      await encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder, output);
+      await encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder, output, forceYield);
     }
 
     await videoEncoder.flush();
