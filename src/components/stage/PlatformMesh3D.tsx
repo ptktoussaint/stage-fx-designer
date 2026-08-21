@@ -3,9 +3,11 @@ import type { ThreeEvent } from '@react-three/fiber';
 import { Color } from 'three';
 import type { PlatformInstance, Vector3 } from '../../types';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { localFloorElevation } from '../../engine/coordinates';
 
 interface PlatformMesh3DProps {
   platform: PlatformInstance;
+  stageHeight: number;
   onDragStart: (kind: 'platform', id: string, position: Vector3) => void;
 }
 
@@ -13,7 +15,7 @@ interface PlatformMesh3DProps {
  * DeviceMesh3D's readable marker, this IS meant to be a true-scale model
  * since its whole purpose is occupying real space (e.g. a DJ table other
  * effects get positioned relative to). */
-export function PlatformMesh3D({ platform, onDragStart }: PlatformMesh3DProps) {
+export function PlatformMesh3D({ platform, stageHeight, onDragStart }: PlatformMesh3DProps) {
   const isSelected = useSelectionStore((s) => s.selectedPlatformIds.includes(platform.id));
   const selectPlatform = useSelectionStore((s) => s.selectPlatform);
 
@@ -22,7 +24,7 @@ export function PlatformMesh3D({ platform, onDragStart }: PlatformMesh3DProps) {
 
   const position: [number, number, number] = [
     platform.position.x,
-    platform.position.z + height / 2,
+    localFloorElevation(platform.position.y, stageHeight) + platform.position.z + height / 2,
     platform.position.y,
   ];
 

@@ -49,6 +49,10 @@ export function StageSettingsForm() {
         suffix="m"
         onChange={(y) => setStage({ origin: { ...stage.origin, y } })}
       />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+        Stage Color
+        <input type="color" value={stage.color} onChange={(e) => setStage({ color: e.target.value })} />
+      </label>
 
       <div style={{ height: 1, background: 'var(--border-subtle)', margin: '8px 0' }} />
 

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { useSelectionStore } from '../../stores/selectionStore';
@@ -10,6 +10,15 @@ import { TimelineTrack } from './TimelineTrack';
 import { TimelineWaveform } from './TimelineWaveform';
 import { TimelineTrimHandles } from './TimelineTrimHandles';
 import { AudioImportControl } from './AudioImportControl';
+import {
+  addTimelineFolder,
+  deviceTrackKey,
+  groupTrackKey,
+  resolveTrackOrder,
+  toggleTimelineFolderCollapsed,
+} from '../../timeline/trackOrganization';
+import { Icon } from '../common/Icon';
+import type { TimelineEvent, TimelineTargetType } from '../../types';
 import './TimelinePanel.css';
 
 const PX_PER_SECOND = 60;
@@ -26,10 +35,18 @@ const PX_PER_SECOND = 60;
  */
 const TRACK_LABEL_WIDTH = 140;
 
+function parseTrackKey(key: string): { targetType: TimelineTargetType; targetId: string } {
+  const [targetType, targetId] = key.split(':') as [TimelineTargetType, string];
+  return { targetType, targetId };
+}
+
 export function TimelinePanel() {
   const devices = useProjectStore((s) => s.project.devices);
   const groups = useProjectStore((s) => s.project.groups);
   const events = useProjectStore((s) => s.project.timeline.events);
+  const folders = useProjectStore((s) => s.project.timeline.folders);
+  const trackOrder = useProjectStore((s) => s.project.timeline.trackOrder);
+  const trackFolder = useProjectStore((s) => s.project.timeline.trackFolder);
   const audio = useProjectStore((s) => s.project.audio);
   const currentTime = usePlaybackStore((s) => s.currentTime);
   const seek = usePlaybackStore((s) => s.seek);
@@ -39,10 +56,69 @@ export function TimelinePanel() {
   const selectedEventId = useSelectionStore((s) => s.selectedTimelineEventId);
   const setSelectedEventId = useSelectionStore((s) => s.selectTimelineEvent);
 
+  const [openFolderMenuKey, setOpenFolderMenuKey] = useState<string | null>(null);
+
   const durationSeconds = useMemo(() => {
     const lastEventEnd = events.reduce((max, e) => Math.max(max, e.time + e.duration), 0);
     return Math.max(60, audio.duration ?? 0, lastEventEnd + 15, currentTime + 15);
   }, [events, currentTime, audio.duration]);
+
+  const resolvedOrder = useMemo(
+    () =>
+      resolveTrackOrder(
+        trackOrder,
+        groups.map((g) => g.id),
+        devices.map((d) => d.id),
+      ),
+    [trackOrder, groups, devices],
+  );
+
+  const eventsByKey = useMemo(() => {
+    const map = new Map<string, TimelineEvent[]>();
+    for (const event of events) {
+      const key = event.targetType === 'group' ? groupTrackKey(event.targetId) : deviceTrackKey(event.targetId);
+      const list = map.get(key);
+      if (list) list.push(event);
+      else map.set(key, [event]);
+    }
+    return map;
+  }, [events]);
+
+  const labelByKey = useMemo(() => {
+    const map = new Map<string, { label: string; color: string }>();
+    groups.forEach((g) => map.set(groupTrackKey(g.id), { label: g.name, color: g.color }));
+    devices.forEach((d) => map.set(deviceTrackKey(d.id), { label: d.name, color: 'var(--accent)' }));
+    return map;
+  }, [groups, devices]);
+
+  const renderTrack = (key: string) => {
+    const meta = labelByKey.get(key);
+    if (!meta) return null;
+    const { targetType, targetId } = parseTrackKey(key);
+    return (
+      <TimelineTrack
+        key={key}
+        trackKey={key}
+        label={meta.label}
+        color={meta.color}
+        targetType={targetType}
+        targetId={targetId}
+        events={eventsByKey.get(key) ?? []}
+        pxPerSecond={PX_PER_SECOND}
+        selectedEventId={selectedEventId}
+        onSelectEvent={setSelectedEventId}
+        trimStart={audio.trimStart}
+        trimEnd={audio.trimEnd}
+        resolvedOrder={resolvedOrder}
+        folders={folders}
+        currentFolderId={trackFolder[key] ?? null}
+        isFolderMenuOpen={openFolderMenuKey === key}
+        onToggleFolderMenu={() => setOpenFolderMenuKey((prev) => (prev === key ? null : key))}
+      />
+    );
+  };
+
+  const ungroupedKeys = resolvedOrder.filter((key) => !trackFolder[key]);
 
   if (isTimelineCollapsed) {
     return (
@@ -61,6 +137,14 @@ export function TimelinePanel() {
           TIMELINE
         </span>
         <span className="timeline-panel__hint">Double-click a lane to add an event · drag to reposition</span>
+        <IconButton
+          icon="platform"
+          label="New Folder (group tracks into a collapsible list)"
+          onClick={() => {
+            const name = window.prompt('Folder name');
+            if (name && name.trim()) addTimelineFolder(name.trim());
+          }}
+        />
         <AudioImportControl />
         <IconButton icon="chevron-down" label="Collapse Timeline" onClick={toggleCollapsed} />
       </div>
@@ -92,36 +176,22 @@ export function TimelinePanel() {
             )}
           </div>
           <div className="timeline-panel__tracks">
-            {groups.map((group) => (
-              <TimelineTrack
-                key={group.id}
-                label={group.name}
-                color={group.color}
-                targetType="group"
-                targetId={group.id}
-                events={events.filter((e) => e.targetType === 'group' && e.targetId === group.id)}
-                pxPerSecond={PX_PER_SECOND}
-                selectedEventId={selectedEventId}
-                onSelectEvent={setSelectedEventId}
-                trimStart={audio.trimStart}
-                trimEnd={audio.trimEnd}
-              />
-            ))}
-            {devices.map((device) => (
-              <TimelineTrack
-                key={device.id}
-                label={device.name}
-                color="var(--accent)"
-                targetType="device"
-                targetId={device.id}
-                events={events.filter((e) => e.targetType === 'device' && e.targetId === device.id)}
-                pxPerSecond={PX_PER_SECOND}
-                selectedEventId={selectedEventId}
-                onSelectEvent={setSelectedEventId}
-                trimStart={audio.trimStart}
-                trimEnd={audio.trimEnd}
-              />
-            ))}
+            {ungroupedKeys.map(renderTrack)}
+
+            {folders.map((folder) => {
+              const memberKeys = resolvedOrder.filter((key) => trackFolder[key] === folder.id);
+              return (
+                <div key={folder.id} className="timeline-folder">
+                  <div className="timeline-folder__header" onClick={() => toggleTimelineFolderCollapsed(folder.id)}>
+                    <Icon name={folder.collapsed ? 'chevron-right' : 'chevron-down'} size={11} />
+                    <span>{folder.name}</span>
+                    <span className="timeline-folder__count">{memberKeys.length}</span>
+                  </div>
+                  {!folder.collapsed && memberKeys.map(renderTrack)}
+                </div>
+              );
+            })}
+
             {devices.length === 0 && groups.length === 0 && (
               <div className="timeline-panel__empty">Add devices from the FX Library to create timeline tracks.</div>
             )}

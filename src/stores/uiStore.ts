@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type StageTool = 'select' | 'distance';
+export type StageTool = 'select' | 'distance' | 'pan';
 
 interface ContextMenuState {
   x: number;
@@ -28,6 +28,8 @@ interface UiState {
   contextMenu: ContextMenuState | null;
   isStageSettingsOpen: boolean;
   isHotkeysPanelOpen: boolean;
+  isClipRecording: boolean;
+  isPlaylistOpen: boolean;
 
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
@@ -41,6 +43,8 @@ interface UiState {
   closeContextMenu: () => void;
   setStageSettingsOpen: (open: boolean) => void;
   setHotkeysPanelOpen: (open: boolean) => void;
+  setClipRecording: (recording: boolean) => void;
+  setPlaylistOpen: (open: boolean) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -57,6 +61,8 @@ export const useUiStore = create<UiState>((set) => ({
   contextMenu: null,
   isStageSettingsOpen: false,
   isHotkeysPanelOpen: false,
+  isClipRecording: false,
+  isPlaylistOpen: false,
 
   setZoom: (zoom) => set({ zoom: Math.min(4, Math.max(0.1, zoom)) }),
   setPan: (pan) => set({ pan }),
@@ -70,4 +76,6 @@ export const useUiStore = create<UiState>((set) => ({
   closeContextMenu: () => set({ contextMenu: null }),
   setStageSettingsOpen: (isStageSettingsOpen) => set({ isStageSettingsOpen }),
   setHotkeysPanelOpen: (isHotkeysPanelOpen) => set({ isHotkeysPanelOpen }),
+  setClipRecording: (isClipRecording) => set({ isClipRecording }),
+  setPlaylistOpen: (isPlaylistOpen) => set({ isPlaylistOpen }),
 }));

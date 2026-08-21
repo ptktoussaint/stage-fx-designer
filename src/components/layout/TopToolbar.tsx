@@ -13,6 +13,8 @@ import { migrateProject } from '../../persistence/schema';
 import { Modal } from '../common/Modal';
 import { StageSettingsForm } from '../inspector/StageSettingsForm';
 import { HotkeysPanel } from '../hotkeys/HotkeysPanel';
+import { PlaylistPanel } from '../playlist/PlaylistPanel';
+import { clipRecorder } from '../../engine/clipRecorder';
 import './TopToolbar.css';
 
 export function TopToolbar() {
@@ -39,7 +41,30 @@ export function TopToolbar() {
   const setHotkeysPanelOpen = useUiStore((s) => s.setHotkeysPanelOpen);
   const isRecording = usePlaybackStore((s) => s.isRecording);
   const toggleRecording = usePlaybackStore((s) => s.toggleRecording);
+  const isClipRecording = useUiStore((s) => s.isClipRecording);
+  const setClipRecording = useUiStore((s) => s.setClipRecording);
+  const isPlaylistOpen = useUiStore((s) => s.isPlaylistOpen);
+  const setPlaylistOpen = useUiStore((s) => s.setPlaylistOpen);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleToggleClipRecording = async () => {
+    if (isClipRecording) {
+      setClipRecording(false);
+      await clipRecorder.stop(project.name);
+      return;
+    }
+    if (viewMode !== '3D') {
+      setSettings({ viewMode: '3D' });
+      // Give the 3D <canvas> a moment to actually mount before capturing it.
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+    const error = clipRecorder.start();
+    if (error) {
+      window.alert(error);
+      return;
+    }
+    setClipRecording(true);
+  };
 
   const handleNew = () => {
     if (!window.confirm('Start a new project? Unsaved changes in the current one will be lost.')) return;
@@ -150,11 +175,23 @@ export function TopToolbar() {
           onClick={toggleRecording}
           className={isRecording ? 'top-toolbar__record-active' : undefined}
         />
+        <IconButton
+          icon="record-clip"
+          label={
+            isClipRecording
+              ? 'Stop Recording Clip (saves a .webm video)'
+              : 'Record Clip (video of the 3D show + audio)'
+          }
+          active={isClipRecording}
+          onClick={handleToggleClipRecording}
+          className={isClipRecording ? 'top-toolbar__record-active' : undefined}
+        />
       </div>
 
       <div className="top-toolbar__divider" />
 
       <div className="top-toolbar__group">
+        <IconButton icon="playlist" label="Playlist" onClick={() => setPlaylistOpen(true)} />
         <IconButton icon="keyboard" label="Hotkeys" onClick={() => setHotkeysPanelOpen(true)} />
         <IconButton icon="download" label="Export" onClick={handleExport} />
         <IconButton icon="settings" label="Settings" onClick={() => setSettingsOpen(true)} />
@@ -168,6 +205,11 @@ export function TopToolbar() {
       {isHotkeysPanelOpen && (
         <Modal title="Hotkeys" onClose={() => setHotkeysPanelOpen(false)}>
           <HotkeysPanel />
+        </Modal>
+      )}
+      {isPlaylistOpen && (
+        <Modal title="Playlist" onClose={() => setPlaylistOpen(false)}>
+          <PlaylistPanel />
         </Modal>
       )}
     </header>

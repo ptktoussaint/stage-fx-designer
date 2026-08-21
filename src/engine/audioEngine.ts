@@ -21,6 +21,12 @@ class AudioEngine {
   private startOffset = 0;
   private playing = false;
   private onEnded: (() => void) | null = null;
+  /** A parallel tap on the same audio graph, always connected alongside
+   * ctx.destination (see play()) so the clip recorder (src/engine/
+   * clipRecorder.ts) can grab a MediaStream of exactly what's playing
+   * without interrupting normal playback — nothing reads this stream
+   * unless a recording is actually in progress. */
+  private recordingDestination: MediaStreamAudioDestinationNode | null = null;
 
   private ensureContext(): AudioContext {
     if (!this.context) {
@@ -59,6 +65,7 @@ class AudioEngine {
     const source = ctx.createBufferSource();
     source.buffer = this.buffer;
     source.connect(ctx.destination);
+    if (this.recordingDestination) source.connect(this.recordingDestination);
     source.onended = () => {
       if (this.source !== source) return; // superseded by a later play()/seek(), not a real end
       this.playing = false;
@@ -107,6 +114,20 @@ class AudioEngine {
     if (!this.buffer) return null;
     if (!this.playing || !this.context) return this.startOffset;
     return this.startOffset + (this.context.currentTime - this.startedAtContextTime);
+  }
+
+  /** A live MediaStreamTrack of whatever audio is currently playing, for
+   * MediaRecorder to combine with the 3D canvas's video track. Returns null
+   * if nothing has ever been loaded (no AudioContext to tap yet). */
+  getRecordingAudioStream(): MediaStream | null {
+    if (!this.context) return null;
+    if (!this.recordingDestination) {
+      this.recordingDestination = this.context.createMediaStreamDestination();
+      // The current source (if one is already playing) was connected before
+      // this tap existed — reconnect so recording can start mid-playback too.
+      if (this.source) this.source.connect(this.recordingDestination);
+    }
+    return this.recordingDestination.stream;
   }
 }
 

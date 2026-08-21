@@ -28,6 +28,12 @@ export function StageEditor() {
           active={activeTool === 'distance'}
           onClick={() => setActiveTool('distance')}
         />
+        <IconButton
+          icon="hand"
+          label="Pan Tool (drag to move the view — also always available via middle-mouse drag)"
+          active={activeTool === 'pan'}
+          onClick={() => setActiveTool('pan')}
+        />
         <div className="stage-editor__toolbar-divider" />
         <IconButton
           icon="grid"

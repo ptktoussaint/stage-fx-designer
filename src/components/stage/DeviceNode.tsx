@@ -37,8 +37,10 @@ export const DeviceNode = memo(function DeviceNode({
   const definition = getDeviceDefinition(device.definitionId);
   if (!definition) return null;
 
-  const colorVar = device.color ? undefined : CATEGORY_COLOR_VAR[definition.category];
-  const color = device.color ?? `var(${colorVar})`;
+  const bodyColorVar = device.bodyColor ? undefined : CATEGORY_COLOR_VAR[definition.category];
+  const bodyColor = device.bodyColor ?? `var(${bodyColorVar})`;
+  const effectColorVar = device.color ? undefined : CATEGORY_COLOR_VAR[definition.category];
+  const effectColor = device.color ?? `var(${effectColorVar})`;
   const footprintPx = metersToPixels(
     Math.max(definition.footprint.width, definition.footprint.depth),
     pixelsPerMeter,
@@ -54,13 +56,13 @@ export const DeviceNode = memo(function DeviceNode({
       style={{ cursor: device.locked ? 'not-allowed' : 'grab', opacity: device.enabled ? 1 : 0.4 }}
     >
       {isTriggered && (
-        <circle r={radius + 6} fill="none" stroke={color} strokeWidth={2} className="device-node__pulse" />
+        <circle r={radius + 6} fill="none" stroke={effectColor} strokeWidth={2} className="device-node__pulse" />
       )}
       {isSelected && (
         <circle r={radius + 4} fill="none" stroke="var(--accent)" strokeWidth={1.5} strokeDasharray="3 2" />
       )}
-      <circle r={radius} fill="var(--bg-panel-alt)" stroke={color} strokeWidth={2} />
-      <g transform={`translate(${-7} ${-7}) rotate(${-device.rotation.z})`} color={color}>
+      <circle r={radius} fill="var(--bg-panel-alt)" stroke={bodyColor} strokeWidth={2} />
+      <g transform={`translate(${-7} ${-7}) rotate(${-device.rotation.z})`} color={bodyColor}>
         <Icon name={definition.icon as never} size={14} />
       </g>
       <text

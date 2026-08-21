@@ -16,6 +16,13 @@ export interface DeviceInstance {
   customProperties: Record<string, number | string | boolean>;
   enabled: boolean;
   locked: boolean;
-  /** Optional UI color override (e.g. for stage-map readability); falls back to category color. */
+  /** Color of the SIMULATED EFFECT this device fires (the flame/spark/confetti
+   * particle color) — falls back to the category default. Independent from
+   * `bodyColor` below: you might want an orange flame effect out of a
+   * red-painted machine, or want to color-code machines by stage zone
+   * without changing what color they actually fire. */
   color?: string;
+  /** Color of the physical machine model itself (2D icon + 3D body) —
+   * falls back to the category default. Independent from `color` above. */
+  bodyColor?: string;
 }

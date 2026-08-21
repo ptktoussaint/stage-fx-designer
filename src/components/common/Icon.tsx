@@ -44,7 +44,10 @@ export type IconName =
   | 'scissors'
   | 'dancer'
   | 'instrument'
-  | 'platform';
+  | 'platform'
+  | 'hand'
+  | 'record-clip'
+  | 'playlist';
 
 const PATHS: Record<IconName, string> = {
   flame: 'M12 2c1 3-3 4-3 7a3 3 0 1 0 6 0c0-1-.5-2-1-2 1 3-1 4-2 4a2 2 0 0 1-2-2c0-2 2-3 2-7Z',
@@ -88,6 +91,9 @@ const PATHS: Record<IconName, string> = {
   dancer: 'M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z M12 6v6 M12 12 7 16 M12 12l5 4 M12 12 8 22 M12 12l4 10',
   instrument: 'M7 3v10a3 3 0 1 0 2 2.8V7h6V3H7Z',
   platform: 'M3 16h18v5H3z M5 16 8 6h8l3 10',
+  hand: 'M8 13V6a1.5 1.5 0 0 1 3 0v5 M11 11V4a1.5 1.5 0 0 1 3 0v7 M14 11.5V6a1.5 1.5 0 0 1 3 0v8 M17 12v2a1.5 1.5 0 0 1 3 0v3a6 6 0 0 1-6 6h-2a7 7 0 0 1-6-3.5L4 15c-.6-1 .2-2.3 1.4-2 .5.1 1 .5 1.3 1l1.3 2',
+  'record-clip': 'M4 6h13l3 3v9H4z M8 10v6l6-3z',
+  playlist: 'M4 6h12 M4 12h12 M4 18h8 M18 13v6 M15.5 16 21 16',
 };
 
 interface IconProps {

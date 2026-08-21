@@ -3,6 +3,7 @@ import { eventBus } from '../../engine/eventBus';
 import { useProjectStore } from '../../stores/projectStore';
 import { getDeviceDefinition } from '../../devices/registry';
 import { CATEGORY_COLOR_HEX } from '../../devices/categoryColors';
+import { localFloorElevation } from '../../engine/coordinates';
 import { createId } from '../../utils/id';
 import { EffectJet } from './effects3d/EffectJet';
 import { EffectBurst } from './effects3d/EffectBurst';
@@ -57,7 +58,8 @@ export function SimulationEffects3D() {
   useEffect(
     () =>
       eventBus.on('SIMULATION_TRIGGER', ({ deviceId, simulationType, parameters }) => {
-        const device = useProjectStore.getState().project.devices.find((d) => d.id === deviceId);
+        const project = useProjectStore.getState().project;
+        const device = project.devices.find((d) => d.id === deviceId);
         if (!device) return;
         const definition = getDeviceDefinition(device.definitionId);
         if (!definition) return;
@@ -67,6 +69,7 @@ export function SimulationEffects3D() {
 
         const height = typeof parameters.height === 'number' ? parameters.height : 3;
         const color = device.color ?? CATEGORY_COLOR_HEX[definition.category];
+        const originY = localFloorElevation(device.position.y, project.stage.height) + device.position.z;
 
         setActive((prev) => {
           const next = [
@@ -74,7 +77,7 @@ export function SimulationEffects3D() {
             {
               id: createId(),
               family,
-              position: [device.position.x, device.position.z, device.position.y] as [number, number, number],
+              position: [device.position.x, originY, device.position.y] as [number, number, number],
               color,
               height,
               simulationType: simulationType as SimulationType,

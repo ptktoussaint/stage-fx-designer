@@ -50,7 +50,12 @@ export function migrateProject(raw: unknown): Project | null {
     figures: (doc.figures ?? []).map((figure) => ({ ...figure, color: figure.color ?? DEFAULT_FIGURE_COLOR })),
     groups: doc.groups ?? [],
     audio: { ...DEFAULT_AUDIO_CONFIG, ...doc.audio },
-    timeline: { events: doc.timeline?.events ?? [] },
+    timeline: {
+      events: doc.timeline?.events ?? [],
+      folders: doc.timeline?.folders ?? [],
+      trackOrder: doc.timeline?.trackOrder ?? [],
+      trackFolder: doc.timeline?.trackFolder ?? {},
+    },
     settings: {
       ...DEFAULT_PROJECT_SETTINGS,
       ...doc.settings,

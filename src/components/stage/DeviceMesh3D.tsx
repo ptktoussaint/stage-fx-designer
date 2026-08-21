@@ -5,9 +5,11 @@ import type { DeviceCategory, DeviceInstance, Vector3 } from '../../types';
 import { getDeviceDefinition } from '../../devices/registry';
 import { CATEGORY_COLOR_HEX } from '../../devices/categoryColors';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { localFloorElevation } from '../../engine/coordinates';
 
 interface DeviceMesh3DProps {
   device: DeviceInstance;
+  stageHeight: number;
   onDragStart: (kind: 'device', id: string, position: Vector3) => void;
 }
 
@@ -166,23 +168,27 @@ const CATEGORY_MODEL: Record<DeviceCategory, (props: { color: Color }) => React.
  * overrides the category default on the primary body, same as
  * platforms/figures.
  */
-export function DeviceMesh3D({ device, onDragStart }: DeviceMesh3DProps) {
+export function DeviceMesh3D({ device, stageHeight, onDragStart }: DeviceMesh3DProps) {
   const definition = getDeviceDefinition(device.definitionId);
   const isSelected = useSelectionStore((s) => s.selectedDeviceIds.includes(device.id));
   const select = useSelectionStore((s) => s.select);
   const toggle = useSelectionStore((s) => s.toggle);
 
   const color = useMemo(() => {
-    const base = new Color(device.color ?? CATEGORY_COLOR_HEX[definition?.category ?? 'ATMOSPHERIC']);
+    const base = new Color(device.bodyColor ?? CATEGORY_COLOR_HEX[definition?.category ?? 'ATMOSPHERIC']);
     // No per-mesh opacity plumbing through every category model — dimming
     // the shared body color toward grey reads as "powered off" just as
     // clearly and applies uniformly regardless of which model is active.
     return device.enabled ? base : base.clone().lerp(new Color('#3a3a3e'), 0.6);
-  }, [device.color, definition?.category, device.enabled]);
+  }, [device.bodyColor, definition?.category, device.enabled]);
 
   if (!definition) return null;
 
-  const position: [number, number, number] = [device.position.x, device.position.z, device.position.y];
+  const position: [number, number, number] = [
+    device.position.x,
+    localFloorElevation(device.position.y, stageHeight) + device.position.z,
+    device.position.y,
+  ];
   const Model = CATEGORY_MODEL[definition.category];
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {

@@ -69,6 +69,7 @@ export function StageRenderer2D() {
   const setZoom = useUiStore((s) => s.setZoom);
   const setPan = useUiStore((s) => s.setPan);
   const openContextMenu = useUiStore((s) => s.openContextMenu);
+  const activeTool = useUiStore((s) => s.activeTool);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [sceneryDrag, setSceneryDrag] = useState<SceneryDragState | null>(null);
@@ -311,7 +312,7 @@ export function StageRenderer2D() {
 
   const handleCanvasPointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (e.button === 1) {
+      if (e.button === 1 || (e.button === 0 && activeTool === 'pan')) {
         e.preventDefault();
         setPanDrag({ startClientX: e.clientX, startClientY: e.clientY, startPan: pan });
         return;
@@ -321,7 +322,7 @@ export function StageRenderer2D() {
       const screen = { x: e.clientX - (rect?.left ?? 0), y: e.clientY - (rect?.top ?? 0) };
       setBoxSelect({ startScreen: screen, currentScreen: screen, additive: e.shiftKey });
     },
-    [pan],
+    [pan, activeTool],
   );
 
   useEffect(() => {
@@ -468,7 +469,7 @@ export function StageRenderer2D() {
     <div
       ref={containerRef}
       className="stage-canvas"
-      style={{ cursor: panDrag ? 'grabbing' : undefined }}
+      style={{ cursor: panDrag ? 'grabbing' : activeTool === 'pan' ? 'grab' : undefined }}
       onPointerDown={handleCanvasPointerDown}
       onWheel={handleWheel}
       onDragOver={(e) => e.preventDefault()}
@@ -491,7 +492,7 @@ export function StageRenderer2D() {
           y={stageOrigin.y}
           width={stageBottomRight.x - stageOrigin.x}
           height={stageBottomRight.y - stageOrigin.y}
-          fill="var(--bg-inset)"
+          fill={stage.color}
         />
         {gridLines.map((line, i) => (
           <line

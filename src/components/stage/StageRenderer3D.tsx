@@ -126,7 +126,7 @@ export function StageRenderer3D() {
           onClick={() => clearSelection()}
         >
           <boxGeometry args={[stage.width, stage.height, stage.depth]} />
-          <meshStandardMaterial color="#141518" />
+          <meshStandardMaterial color={stage.color} />
         </mesh>
 
         {stage.frontMargin > 0 && (
@@ -155,15 +155,20 @@ export function StageRenderer3D() {
         />
 
         {platforms.map((platform) => (
-          <PlatformMesh3D key={platform.id} platform={platform} onDragStart={handleDragStart} />
+          <PlatformMesh3D
+            key={platform.id}
+            platform={platform}
+            stageHeight={stage.height}
+            onDragStart={handleDragStart}
+          />
         ))}
 
         {figures.map((figure) => (
-          <FigureMesh3D key={figure.id} figure={figure} onDragStart={handleDragStart} />
+          <FigureMesh3D key={figure.id} figure={figure} stageHeight={stage.height} onDragStart={handleDragStart} />
         ))}
 
         {devices.map((device) => (
-          <DeviceMesh3D key={device.id} device={device} onDragStart={handleDragStart} />
+          <DeviceMesh3D key={device.id} device={device} stageHeight={stage.height} onDragStart={handleDragStart} />
         ))}
 
         <SimulationEffects3D />

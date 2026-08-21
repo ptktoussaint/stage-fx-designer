@@ -9,6 +9,7 @@ import type {
   Project,
   ProjectSettings,
   StageConfig,
+  TimelineData,
   TimelineEvent,
 } from '../types';
 import { CURRENT_SCHEMA_VERSION, DEFAULT_AUDIO_CONFIG, DEFAULT_PROJECT_SETTINGS } from '../types';
@@ -30,7 +31,7 @@ export function createEmptyProject(name = 'Untitled Show'): Project {
     figures: [],
     groups: [],
     audio: { ...DEFAULT_AUDIO_CONFIG },
-    timeline: { events: [] },
+    timeline: { events: [], folders: [], trackOrder: [], trackFolder: {} },
     settings: { ...DEFAULT_PROJECT_SETTINGS, snap: { ...DEFAULT_PROJECT_SETTINGS.snap } },
     hotkeys: [],
   };
@@ -89,6 +90,13 @@ interface ProjectState {
    * is safe to call directly from UI code.
    */
   setAudio: (patch: Partial<AudioConfig>) => void;
+
+  /**
+   * Same rationale as setAudio: reordering/grouping timeline tracks is
+   * organizing the editor's view of the show, not editing the show's
+   * content — not something a user thinks of as undo-stack-worthy.
+   */
+  setTimelineOrganization: (patch: Partial<Omit<TimelineData, 'events'>>) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -118,6 +126,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           deviceIds: g.deviceIds.filter((id) => id !== deviceId),
         })),
         timeline: {
+          ...s.project.timeline,
           events: s.project.timeline.events.filter(
             (e) => !(e.targetType === 'device' && e.targetId === deviceId),
           ),
@@ -141,6 +150,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             deviceIds: g.deviceIds.filter((id) => !idSet.has(id)),
           })),
           timeline: {
+            ...s.project.timeline,
             events: s.project.timeline.events.filter(
               (e) => !(e.targetType === 'device' && idSet.has(e.targetId)),
             ),
@@ -267,7 +277,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => ({
       project: {
         ...s.project,
-        timeline: { events: [...s.project.timeline.events, event] },
+        timeline: { ...s.project.timeline, events: [...s.project.timeline.events, event] },
         updatedAt: new Date().toISOString(),
       },
     })),
@@ -276,7 +286,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => ({
       project: {
         ...s.project,
-        timeline: { events: s.project.timeline.events.filter((e) => e.id !== eventId) },
+        timeline: { ...s.project.timeline, events: s.project.timeline.events.filter((e) => e.id !== eventId) },
         updatedAt: new Date().toISOString(),
       },
     })),
@@ -286,6 +296,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project: {
         ...s.project,
         timeline: {
+          ...s.project.timeline,
           events: s.project.timeline.events.map((e) => (e.id === eventId ? { ...e, ...patch } : e)),
         },
         updatedAt: new Date().toISOString(),
@@ -339,6 +350,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     // here instead. Otherwise removing a track/trimming falls back to the
     // debounced autosave alone and can lose the change to a fast reload,
     // same race as the one fixed in historyStore for command-based edits.
+    void saveProjectToLocal(get().project);
+  },
+
+  setTimelineOrganization: (patch) => {
+    set((s) => ({
+      project: {
+        ...s.project,
+        timeline: { ...s.project.timeline, ...patch },
+        updatedAt: new Date().toISOString(),
+      },
+    }));
     void saveProjectToLocal(get().project);
   },
 }));

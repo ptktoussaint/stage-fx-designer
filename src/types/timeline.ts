@@ -24,6 +24,26 @@ export interface TimelineEvent {
   parameters: Record<string, number | string | boolean>;
 }
 
+/** A collapsible folder for organizing timeline tracks — purely a display
+ * grouping (like a layer-panel folder), unrelated to Group (which groups
+ * devices for simultaneous triggering). */
+export interface TimelineFolder {
+  id: string;
+  name: string;
+  collapsed: boolean;
+}
+
 export interface TimelineData {
   events: TimelineEvent[];
+  folders: TimelineFolder[];
+  /** Every track's key ("device:<id>" or "group:<id>") in display order —
+   * a flat order shared across ungrouped tracks and every folder's
+   * members alike; rendering filters this down per context. A device or
+   * group whose key isn't in here yet (just added) renders after
+   * everything that is, in its natural devices/groups array position, so
+   * nothing elsewhere needs to remember to push into this list. */
+  trackOrder: string[];
+  /** Track key -> folder id, for a track nested inside a folder. A track
+   * with no entry here is ungrouped (rendered at the top level). */
+  trackFolder: Record<string, string>;
 }

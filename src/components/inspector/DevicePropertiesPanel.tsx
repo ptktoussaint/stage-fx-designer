@@ -62,16 +62,27 @@ export function DevicePropertiesPanel({ device }: { device: DeviceInstance }) {
           />
           Enabled
         </label>
-        <label className="inspector-checkbox">
-          Color
+        <IconButton icon="duplicate" label="Duplicate" onClick={() => duplicateDevices([device.id])} />
+        <IconButton icon="trash" label="Delete" onClick={() => removeDevices([device.id])} />
+      </div>
+
+      <div className="inspector-section__row inspector-section__row--gap">
+        <label className="inspector-checkbox" title="Color of the machine itself — the 2D icon and 3D model">
+          Object Color
+          <input
+            type="color"
+            value={device.bodyColor ?? CATEGORY_COLOR_HEX[definition.category]}
+            onChange={(e) => commit({ bodyColor: device.bodyColor }, { bodyColor: e.target.value }, 'Edit Object Color')}
+          />
+        </label>
+        <label className="inspector-checkbox" title="Color of the simulated flame/spark/confetti this device fires">
+          Effect Color
           <input
             type="color"
             value={device.color ?? CATEGORY_COLOR_HEX[definition.category]}
-            onChange={(e) => commit({ color: device.color }, { color: e.target.value }, 'Edit Color')}
+            onChange={(e) => commit({ color: device.color }, { color: e.target.value }, 'Edit Effect Color')}
           />
         </label>
-        <IconButton icon="duplicate" label="Duplicate" onClick={() => duplicateDevices([device.id])} />
-        <IconButton icon="trash" label="Delete" onClick={() => removeDevices([device.id])} />
       </div>
 
       <div className="inspector-group-title">Position (meters)</div>

@@ -64,7 +64,7 @@ export class RemoveDevicesCommand implements Command {
       ...store.project,
       devices: this.prevDevices,
       groups: this.prevGroups,
-      timeline: { events: this.prevEvents },
+      timeline: { ...store.project.timeline, events: this.prevEvents },
     });
   }
 }

@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { addTimelineEvent, removeTimelineEvent, updateTimelineEvent } from '../../commands';
-import type { TimelineEvent, TimelineTargetType } from '../../types';
+import { moveTrackOrder, setTrackFolder } from '../../timeline/trackOrganization';
+import type { TimelineEvent, TimelineFolder, TimelineTargetType } from '../../types';
 import { TimelineEventBlock } from './TimelineEventBlock';
+import { Icon } from '../common/Icon';
 
 interface TimelineTrackProps {
+  trackKey: string;
   label: string;
   color: string;
   targetType: TimelineTargetType;
@@ -16,9 +19,16 @@ interface TimelineTrackProps {
   /** A cue outside [trimStart, trimEnd) never fires during playback (the Show Engine never reaches it) — dimmed to match the waveform's trim mask rather than hidden, since it's still there if the trim moves back out. */
   trimStart: number;
   trimEnd: number | null;
+  /** For reordering (see trackOrganization.moveTrackOrder) and the folder picker below. */
+  resolvedOrder: string[];
+  folders: TimelineFolder[];
+  currentFolderId: string | null;
+  isFolderMenuOpen: boolean;
+  onToggleFolderMenu: () => void;
 }
 
 export function TimelineTrack({
+  trackKey,
   label,
   color,
   targetType,
@@ -29,6 +39,11 @@ export function TimelineTrack({
   onSelectEvent,
   trimStart,
   trimEnd,
+  resolvedOrder,
+  folders,
+  currentFolderId,
+  isFolderMenuOpen,
+  onToggleFolderMenu,
 }: TimelineTrackProps) {
   const dragRef = useRef<{ eventId: string; startClientX: number; startTime: number } | null>(null);
   const [, forceRerender] = useState(0);
@@ -76,7 +91,64 @@ export function TimelineTrack({
   return (
     <div className="timeline-track">
       <div className="timeline-track__label" style={{ borderLeftColor: color }}>
-        {label}
+        <div className="timeline-track__reorder">
+          <button
+            type="button"
+            className="timeline-track__reorder-btn"
+            title="Move Up"
+            onClick={() => moveTrackOrder(trackKey, -1, resolvedOrder)}
+          >
+            <Icon name="chevron-right" size={9} className="timeline-track__chevron-up" />
+          </button>
+          <button
+            type="button"
+            className="timeline-track__reorder-btn"
+            title="Move Down"
+            onClick={() => moveTrackOrder(trackKey, 1, resolvedOrder)}
+          >
+            <Icon name="chevron-right" size={9} className="timeline-track__chevron-down" />
+          </button>
+        </div>
+        <span className="timeline-track__name" title={label}>
+          {label}
+        </span>
+        <div className="timeline-track__folder-picker">
+          <button
+            type="button"
+            className="timeline-track__reorder-btn"
+            title="Assign to Folder"
+            onClick={onToggleFolderMenu}
+          >
+            <Icon name="platform" size={10} />
+          </button>
+          {isFolderMenuOpen && (
+            <div className="timeline-track__folder-menu">
+              <button
+                type="button"
+                className={currentFolderId === null ? 'is-active' : ''}
+                onClick={() => {
+                  setTrackFolder(trackKey, null);
+                  onToggleFolderMenu();
+                }}
+              >
+                No Folder
+              </button>
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  type="button"
+                  className={currentFolderId === folder.id ? 'is-active' : ''}
+                  onClick={() => {
+                    setTrackFolder(trackKey, folder.id);
+                    onToggleFolderMenu();
+                  }}
+                >
+                  {folder.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="timeline-track__lane" onDoubleClick={handleLaneDoubleClick}>
         {events.map((event) => (

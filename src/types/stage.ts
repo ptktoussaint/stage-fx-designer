@@ -15,6 +15,8 @@ export interface StageConfig {
   origin: { x: number; y: number };
   /** Grid spacing, in meters, used for the visual grid and "snap to grid". */
   gridSize: number;
+  /** Deck surface color — the 2D fill and the 3D deck box's material. */
+  color: string;
 }
 
 export const DEFAULT_STAGE_CONFIG: StageConfig = {
@@ -24,4 +26,5 @@ export const DEFAULT_STAGE_CONFIG: StageConfig = {
   frontMargin: 6,
   origin: { x: 0, y: 0 },
   gridSize: 0.5,
+  color: '#141518',
 };

@@ -2,9 +2,11 @@ import type { ThreeEvent } from '@react-three/fiber';
 import type { FigureInstance, Vector3 } from '../../types';
 import { getFigureDefinition } from '../../figures/registry';
 import { useSelectionStore } from '../../stores/selectionStore';
+import { localFloorElevation } from '../../engine/coordinates';
 
 interface FigureMesh3DProps {
   figure: FigureInstance;
+  stageHeight: number;
   onDragStart: (kind: 'figure', id: string, position: Vector3) => void;
 }
 
@@ -115,14 +117,18 @@ function InstrumentMarker({
   }
 }
 
-export function FigureMesh3D({ figure, onDragStart }: FigureMesh3DProps) {
+export function FigureMesh3D({ figure, stageHeight, onDragStart }: FigureMesh3DProps) {
   const definition = getFigureDefinition(figure.definitionId);
   const isSelected = useSelectionStore((s) => s.selectedFigureIds.includes(figure.id));
   const selectFigure = useSelectionStore((s) => s.selectFigure);
 
   if (!definition) return null;
 
-  const position: [number, number, number] = [figure.position.x, figure.position.z, figure.position.y];
+  const position: [number, number, number] = [
+    figure.position.x,
+    localFloorElevation(figure.position.y, stageHeight) + figure.position.z,
+    figure.position.y,
+  ];
 
   const handlePointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
