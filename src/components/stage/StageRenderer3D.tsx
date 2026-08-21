@@ -240,7 +240,14 @@ export function StageRenderer3D() {
         )}
 
         <OrbitControls
-          ref={controlsRef}
+          ref={(instance) => {
+            controlsRef.current = instance;
+            // Re-registers on every Canvas remount too (recording toggle),
+            // so the offline show renderer (which swings the camera to a
+            // standard show-facing angle for the render, then restores it)
+            // always has the live instance.
+            offlineRenderRoot.setControls(instance);
+          }}
           target={savedCameraRef.current?.target ?? target}
           minDistance={2}
           maxDistance={Math.max(stage.width, stage.depth + stage.frontMargin) * 3}

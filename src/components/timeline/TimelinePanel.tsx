@@ -175,6 +175,7 @@ export function TimelinePanel() {
         startTime: trimStart,
         endTime: targetEnd,
         fileNameBase: projectName.replace(/\s+/g, '_') || 'show',
+        stage: useProjectStore.getState().project.stage,
         onProgress: setAutoRenderProgress,
       });
       if (error) window.alert(error);

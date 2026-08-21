@@ -52,7 +52,28 @@ export interface OfflineRenderOptions {
   startTime: number;
   endTime: number;
   fileNameBase: string;
+  /** Used to frame the standard show-facing camera angle below. */
+  stage: { width: number; depth: number; height: number; frontMargin: number };
   onProgress?: (fraction: number) => void;
+}
+
+/**
+ * A fixed eye-level, front-of-stage view — like standing at the front of an
+ * audience looking at the show — instead of whatever angle the user happens
+ * to have orbited the live editing camera to. The render always uses this,
+ * regardless of the live view, so the exported video is consistent and
+ * doesn't depend on where the camera was left.
+ */
+function computeStandardShowCamera(stage: OfflineRenderOptions['stage']): {
+  position: [number, number, number];
+  target: [number, number, number];
+} {
+  const AVERAGE_EYE_HEIGHT = 1.7;
+  const back = stage.frontMargin + Math.max(stage.width, stage.depth) * 0.9;
+  return {
+    position: [stage.width / 2, stage.height + AVERAGE_EYE_HEIGHT, -back],
+    target: [stage.width / 2, stage.height + 0.6, stage.depth * 0.3],
+  };
 }
 
 /**
@@ -102,7 +123,20 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
     height,
     bitrate: VIDEO_BITRATE,
     framerate: FPS,
-    latencyMode: 'quality',
+    // 'quality' mode is dramatically slower to encode (it's tuned for
+    // offline transcoding where time doesn't matter) — for VP9 software
+    // encode that was often slower than real playback, which is exactly
+    // backwards for a feature whose whole point is not waiting out the
+    // show. 'realtime' is the mode built for fast, continuous encoding;
+    // at this bitrate the quality difference isn't visible.
+    latencyMode: 'realtime',
+    // NOT 'prefer-hardware': despite being documented as advisory, some
+    // browser/GPU combinations (confirmed in testing) throw a hard
+    // "Encoder creation error" instead of falling back to software when no
+    // hardware VP9 encoder is available — which would break the entire
+    // export for those users. 'no-preference' lets the browser pick
+    // whichever path actually works, hardware included where it exists.
+    hardwareAcceleration: 'no-preference',
   });
 
   let audioEncoder: AudioEncoder | null = null;
@@ -121,6 +155,34 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
 
   showEngine.reset(options.startTime);
   state.setFrameloop('never');
+
+  // Swing the camera to a standard show-facing angle for the render,
+  // independent of wherever the live editing view happens to be orbited —
+  // the export should look the same every time. OrbitControls owns the
+  // camera each frame (its own useFrame subscription re-derives
+  // position/rotation from its internal spherical state), so moving
+  // state.camera directly wouldn't stick; going through the controls
+  // instance and calling update() rebases that internal state to match.
+  const controls = offlineRenderRoot.getControls();
+  const showCamera = computeStandardShowCamera(options.stage);
+  const previousCamera = controls
+    ? {
+        position: [controls.object.position.x, controls.object.position.y, controls.object.position.z] as [
+          number,
+          number,
+          number,
+        ],
+        target: [controls.target.x, controls.target.y, controls.target.z] as [number, number, number],
+      }
+    : null;
+  if (controls) {
+    controls.object.position.set(...showCamera.position);
+    controls.target.set(...showCamera.target);
+    controls.update();
+  } else {
+    state.camera.position.set(...showCamera.position);
+    state.camera.lookAt(...showCamera.target);
+  }
 
   try {
     for (let i = 0; i < frameCount; i++) {
@@ -153,6 +215,11 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
     muxer.finalize();
   } finally {
     state.setFrameloop('always');
+    if (controls && previousCamera) {
+      controls.object.position.set(...previousCamera.position);
+      controls.target.set(...previousCamera.target);
+      controls.update();
+    }
   }
 
   const blob = new Blob([target.buffer], { type: 'video/webm' });

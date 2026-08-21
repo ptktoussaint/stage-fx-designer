@@ -7,6 +7,7 @@ import {
 } from '../types';
 import { DEFAULT_STAGE_CONFIG } from '../types/stage';
 import { createId } from '../utils/id';
+import { getDeviceDefinition } from '../devices/registry';
 
 /**
  * Every persisted project carries schemaVersion, for future STRUCTURAL
@@ -45,7 +46,19 @@ export function migrateProject(raw: unknown): Project | null {
     createdAt: doc.createdAt ?? new Date().toISOString(),
     updatedAt: doc.updatedAt ?? new Date().toISOString(),
     stage: { ...DEFAULT_STAGE_CONFIG, ...doc.stage },
-    devices: doc.devices ?? [],
+    // Backfilled with definition.defaultParameters UNDER each device's own
+    // customProperties (not overwritten) — a device saved before a newer
+    // build added a parameter (e.g. Mine's firing "angle") would otherwise
+    // be missing that key forever, since customProperties is only ever
+    // snapshotted once at device-creation time.
+    devices: (doc.devices ?? []).map((device) => {
+      const definition = getDeviceDefinition(device.definitionId);
+      if (!definition) return device;
+      return {
+        ...device,
+        customProperties: { ...definition.defaultParameters, ...device.customProperties },
+      };
+    }),
     platforms: doc.platforms ?? [],
     figures: (doc.figures ?? []).map((figure) => ({ ...figure, color: figure.color ?? DEFAULT_FIGURE_COLOR })),
     groups: doc.groups ?? [],
