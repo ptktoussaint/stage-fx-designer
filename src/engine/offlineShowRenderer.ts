@@ -128,52 +128,35 @@ async function pickOutputTarget(fileNameBase: string): Promise<OutputTarget> {
   }
 }
 
-const FORCE_YIELD_INTERVAL_MS = 150;
-
 /**
  * `await somePromise` only truly hands control back to the browser (letting
- * it run garbage collection, among other housekeeping) when that promise
- * resolves via a real macrotask — e.g. a `setTimeout`. An `await` on a
- * promise that resolves through microtasks alone (which is exactly what
- * `waitForBackpressure` below does whenever nothing is backed up — the
- * common case) never actually yields to the browser at all.
+ * it run garbage collection and reclaim GPU-side resources, among other
+ * housekeeping) when that promise resolves via a real macrotask — e.g. a
+ * `setTimeout`. An `await` on a promise that resolves through microtasks
+ * alone never actually yields to the browser at all, so a version of this
+ * that only yielded when something was backed up (the video/audio
+ * encoder's queue, or pending disk writes) could still run for long
+ * stretches with no real yield at all whenever nothing happened to be
+ * backed up — the common case, especially once VP8 (see pickVideoCodec)
+ * made encoding itself so cheap that the video/audio queues rarely fill.
  *
- * For a short show that's irrelevant. For an 11-minute one at 30fps —
- * ~20,000 iterations — it means this loop can run for long stretches
- * without ever giving the browser a chance to reclaim the VideoFrames,
- * Three.js scratch objects, and encoder-internal buffers each iteration
- * allocates. Nothing here individually leaks, but with no opportunity to
- * collect any of it, memory climbs for the entire length of the render and
- * eventually exhausts the tab — which is exactly why this kept crashing
- * near the end even after the two write-side fixes (disk streaming, write
- * backpressure) that came before it: neither one forces a real yield when
- * the encoder and disk are actually keeping up fine.
+ * That mattered more, not less, once encoding got fast: SimulationEffects3D
+ * mounts and unmounts real Three.js meshes (with real GPU buffers) as the
+ * show's pyro/spark/etc. effects fire and finish, and a faster encode loop
+ * fast-forwards through the same show in less wall-clock time — the same
+ * number of effect mount/unmount cycles now happens in a much shorter
+ * window, so the *rate* of GPU resource churn per real second went up. A
+ * periodic (every ~150ms) forced yield still left gaps wide enough for
+ * that churn to outpace the browser's ability to reclaim it, especially
+ * for an 11-minute show showing effects throughout.
  *
- * This forces one on a wall-clock cadence — not tied to frame count, so it
- * behaves the same whether a frame takes a fraction of a millisecond or
- * several — regardless of whether backpressure would have caused one
- * anyway.
+ * So this yields unconditionally, every single frame/chunk — affordable
+ * now that VP8 leaves so much speed headroom that even ~20,000 unconditional
+ * yields only adds well under two minutes total, a small price for not
+ * crashing.
  */
-function createYieldGate(): () => Promise<void> {
-  let last = performance.now();
-  return async () => {
-    if (performance.now() - last >= FORCE_YIELD_INTERVAL_MS) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      last = performance.now();
-    }
-  };
-}
-
-/** Pauses until both the encoder's own queue and (when writing straight to
- * disk) the number of in-flight file writes have drained enough to keep
- * memory bounded, no matter how much faster than the disk this loop runs —
- * and, via `forceYield`, at least periodically even when neither is. */
-async function waitForBackpressure(
-  encoder: VideoEncoder | AudioEncoder,
-  output: OutputTarget,
-  forceYield: () => Promise<void>,
-): Promise<void> {
-  await forceYield();
+async function waitForBackpressure(encoder: VideoEncoder | AudioEncoder, output: OutputTarget): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
   while (encoder.encodeQueueSize > 6 || (output.kind === 'file' && output.stream.pendingWrites > MAX_PENDING_FILE_WRITES)) {
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
@@ -188,7 +171,6 @@ async function encodeAudioBuffer(
   endTime: number,
   encoder: AudioEncoder,
   output: OutputTarget,
-  forceYield: () => Promise<void>,
 ): Promise<void> {
   const sampleRate = buffer.sampleRate;
   const startSample = Math.max(0, Math.floor(startTime * sampleRate));
@@ -211,7 +193,7 @@ async function encodeAudioBuffer(
     });
     encoder.encode(audioData);
     audioData.close();
-    await waitForBackpressure(encoder, output, forceYield);
+    await waitForBackpressure(encoder, output);
   }
 }
 
@@ -312,9 +294,12 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
 
   let controls: OrbitControlsImpl | null = null;
   let previousCamera: { position: [number, number, number]; target: [number, number, number] } | null = null;
-  const forceYield = createYieldGate();
 
   const videoCodec = await pickVideoCodec(width, height);
+  // Visible in DevTools (F12 → Console) — the only way to confirm from a
+  // bug report which codec path actually ran, short of asking someone to
+  // read the exported file's own metadata.
+  console.log(`Offline render: using ${videoCodec.muxerCodec} for ${frameCount} frames at ${width}x${height}`);
 
   try {
     const muxer = new Muxer({
@@ -407,12 +392,12 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
       frame.close();
 
-      await waitForBackpressure(videoEncoder, output, forceYield);
+      await waitForBackpressure(videoEncoder, output);
       options.onProgress?.((i + 1) / frameCount);
     }
 
     if (hasAudio && audioEncoder) {
-      await encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder, output, forceYield);
+      await encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder, output);
     }
 
     await videoEncoder.flush();
