@@ -8,6 +8,7 @@ const FPS = 30;
 const VIDEO_BITRATE = 12_000_000;
 const AUDIO_BITRATE = 192_000;
 const AUDIO_CHUNK_FRAMES = 4800;
+const MAX_RENDER_DIMENSION = 1280;
 
 // Not part of TypeScript's DOM lib yet, even though FileSystemFileHandle /
 // FileSystemWritableFileStream themselves are.
@@ -351,9 +352,7 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
   if (!state) return 'A vista 3D ainda não está pronta — mude para 3D e tente novamente.';
 
   const canvas = state.gl.domElement;
-  const width = canvas.width;
-  const height = canvas.height;
-  if (width === 0 || height === 0) return 'A vista 3D ainda não tem um tamanho visível.';
+  if (canvas.width === 0 || canvas.height === 0) return 'A vista 3D ainda não tem um tamanho visível.';
 
   const totalDuration = options.endTime - options.startTime;
   if (totalDuration <= 0) return 'Nada para renderizar — importe um áudio ou adicione marcações na timeline primeiro.';
@@ -364,6 +363,31 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
   // building up in memory.
   const output = await pickOutputTarget(options.fileNameBase);
   if (output.kind === 'cancelled') return null;
+
+  // The stage view's live size follows the actual window/monitor — on a
+  // large or high-DPI display that can mean a canvas (and every VideoFrame
+  // and GPU framebuffer/texture built from it, every one of the ~20,000
+  // frames in an 11-minute show) several times larger than what this was
+  // tested against. None of that shows up in the JS heap this file can
+  // monitor (see createMemoryGuard) — GPU-side memory is invisible to
+  // performance.memory — so capping the render's actual resolution,
+  // independent of whatever the live view happens to be sized at, is a
+  // direct way to bound that risk regardless of the viewer's screen. The
+  // stage view is already hidden behind an overlay for the whole render
+  // (see StageEditor's isAutoRendering overlay), so shrinking it for the
+  // duration is invisible to whoever's waiting on it. Done only after every
+  // early-return check above, so a cancelled/invalid render never leaves
+  // the live view shrunk with nothing to restore it (the restore lives in
+  // the `finally` below, which only the try block that follows reaches).
+  const originalSize = { width: state.size.width, height: state.size.height };
+  const originalDpr = state.viewport.dpr;
+  const scale = Math.min(1, MAX_RENDER_DIMENSION / Math.max(canvas.width, canvas.height));
+  if (scale < 1) {
+    state.setDpr(1);
+    state.setSize(Math.round(originalSize.width * scale), Math.round(originalSize.height * scale));
+  }
+  const width = canvas.width;
+  const height = canvas.height;
 
   const frameCount = Math.max(1, Math.ceil(totalDuration * FPS));
   const decodedAudio = audioEngine.getDecodedBuffer();
@@ -522,6 +546,10 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       controls.object.position.set(...previousCamera.position);
       controls.target.set(...previousCamera.target);
       controls.update();
+    }
+    if (scale < 1) {
+      state.setDpr(originalDpr);
+      state.setSize(originalSize.width, originalSize.height);
     }
   }
 }
