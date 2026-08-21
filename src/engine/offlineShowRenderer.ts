@@ -15,9 +15,20 @@ interface SaveFilePickerOptions {
   suggestedName?: string;
   types?: { description?: string; accept: Record<string, string[]> }[];
 }
+// Chrome-only, non-standard, and not in TypeScript's DOM lib — but this
+// feature already requires Chrome/Edge, and it's the only way to see actual
+// JS heap usage from the page itself (there's no other way to ask "are we
+// close to running out of memory?" before the browser just does it anyway).
+interface ChromeMemoryInfo {
+  usedJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
 declare global {
   interface Window {
     showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+  }
+  interface Performance {
+    memory?: ChromeMemoryInfo;
   }
 }
 
@@ -218,6 +229,51 @@ function createAudioEncodeCursor(
   };
 }
 
+const MEMORY_ABORT_FRACTION = 0.85;
+const MEMORY_LOG_INTERVAL_FRAMES = 300; // ~every 10s of show time at 30fps
+
+/**
+ * `performance.memory` only reports the V8 JS heap — not GPU-side buffers,
+ * not whatever WebCodecs holds internally for the encoders, not the OS-level
+ * memory a browser process otherwise uses. A leak living in any of those
+ * wouldn't show up here at all. But logging it throughout every render
+ * (regardless of whether it ever gets close to the limit) costs nothing and
+ * is the only direct visibility this page has into its own memory pressure
+ * — if it stays flat right up to a crash, that itself is a real, useful
+ * finding (points away from the JS heap entirely, toward GPU/native
+ * buffers); if it climbs, that's the smoking gun.
+ *
+ * More importantly, this turns an uncontrolled tab crash (which destroys
+ * the console log, this render's progress, and everything else) into a
+ * graceful, informative failure: aborting a bit before the real ceiling,
+ * with the exact frame/percentage/heap numbers preserved in the error
+ * message, is far more useful than "Ah, não!" telling us nothing at all.
+ */
+function createMemoryGuard(): (frameIndex: number, frameCount: number) => void {
+  let lastLoggedFrame = -MEMORY_LOG_INTERVAL_FRAMES;
+  return (frameIndex: number, frameCount: number) => {
+    const mem = performance.memory;
+    if (!mem) return;
+    const fraction = mem.usedJSHeapSize / mem.jsHeapSizeLimit;
+    if (frameIndex - lastLoggedFrame >= MEMORY_LOG_INTERVAL_FRAMES) {
+      lastLoggedFrame = frameIndex;
+      const usedMB = Math.round(mem.usedJSHeapSize / 1_000_000);
+      const limitMB = Math.round(mem.jsHeapSizeLimit / 1_000_000);
+      console.log(
+        `Offline render: memory ${usedMB}MB / ${limitMB}MB (${Math.round(fraction * 100)}%) at frame ${frameIndex}/${frameCount}`,
+      );
+    }
+    if (fraction >= MEMORY_ABORT_FRACTION) {
+      const usedMB = Math.round(mem.usedJSHeapSize / 1_000_000);
+      const limitMB = Math.round(mem.jsHeapSizeLimit / 1_000_000);
+      const percent = Math.round(((frameIndex + 1) / frameCount) * 100);
+      throw new Error(
+        `Memory guard tripped: ${usedMB}MB / ${limitMB}MB JS heap used at frame ${frameIndex + 1}/${frameCount} (${percent}%)`,
+      );
+    }
+  };
+}
+
 export interface OfflineRenderOptions {
   startTime: number;
   endTime: number;
@@ -404,6 +460,7 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
 
     const encodeAudioUpTo =
       hasAudio && audioEncoder ? createAudioEncodeCursor(decodedAudio, options.startTime, audioEncoder) : null;
+    const checkMemory = createMemoryGuard();
 
     for (let i = 0; i < frameCount; i++) {
       const showTime = options.startTime + i / FPS;
@@ -421,6 +478,7 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       encodeAudioUpTo?.(options.startTime + virtualElapsed);
 
       await waitForBackpressure(videoEncoder, output);
+      checkMemory(i, frameCount);
       options.onProgress?.((i + 1) / frameCount);
     }
 
@@ -451,6 +509,11 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
     console.error('Offline render failed', e);
     if (output.kind === 'file') {
       await output.stream.abort().catch(() => {});
+    }
+    if (e instanceof Error && e.message.startsWith('Memory guard tripped')) {
+      // Surfaced directly (not just to the console) so this can be copied
+      // straight into a bug report without needing DevTools open.
+      return `A renderização foi interrompida antes que a memória do navegador se esgotasse (${e.message}). Isso ainda precisa de mais investigação — por favor reporte esse número exato.`;
     }
     return 'A renderização falhou — veja o console para detalhes e tente novamente.';
   } finally {
