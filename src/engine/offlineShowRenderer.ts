@@ -162,39 +162,60 @@ async function waitForBackpressure(encoder: VideoEncoder | AudioEncoder, output:
   }
 }
 
-/** Feeds an AudioBuffer's PCM samples straight into an AudioEncoder — no
- * real-time playback involved, so this runs as fast as the encoder (and,
- * where writing straight to disk, the disk itself) allows. */
-async function encodeAudioBuffer(
+/**
+ * Encodes an AudioBuffer's PCM samples into an AudioEncoder incrementally,
+ * a chunk at a time, up to whatever timestamp the caller asks for — instead
+ * of dumping the whole track in one pass. This is called once per video
+ * frame from the main render loop (see below), not as one big pass after
+ * all video frames.
+ *
+ * That interleaving is not just cosmetic: webm-muxer only writes a video
+ * chunk out immediately if it already has an audio chunk at an
+ * equal-or-later timestamp — otherwise it queues the video chunk in memory,
+ * waiting for audio to catch up, to keep the two tracks properly
+ * interleaved in the file. Encoding all video first while audio's clock
+ * sits at zero meant *every* video chunk for the whole show stayed queued
+ * inside the muxer itself — a real, referenced growing array, not garbage
+ * waiting to be collected — for the entire render. That silently defeated
+ * every fix from previous rounds (writing straight to disk, backpressure on
+ * those writes, forcing the browser to yield): none of them could matter,
+ * because the data never reached the point where they'd apply. It also
+ * explains why the crash kept landing at the same ~75% mark of this
+ * specific show no matter how much faster or slower the encoding itself
+ * ran: the ceiling was how much video had piled up in that queue by that
+ * point in the show, not wall-clock render time.
+ */
+function createAudioEncodeCursor(
   buffer: AudioBuffer,
-  startTime: number,
-  endTime: number,
+  clipStartTime: number,
   encoder: AudioEncoder,
-  output: OutputTarget,
-): Promise<void> {
+): (targetTime: number) => void {
   const sampleRate = buffer.sampleRate;
-  const startSample = Math.max(0, Math.floor(startTime * sampleRate));
-  const endSample = Math.min(buffer.length, Math.ceil(endTime * sampleRate));
   const channels = buffer.numberOfChannels;
+  const clipStartSample = Math.max(0, Math.floor(clipStartTime * sampleRate));
+  let nextSample = clipStartSample;
 
-  for (let offset = startSample; offset < endSample; offset += AUDIO_CHUNK_FRAMES) {
-    const frames = Math.min(AUDIO_CHUNK_FRAMES, endSample - offset);
-    const planar = new Float32Array(frames * channels);
-    for (let ch = 0; ch < channels; ch++) {
-      planar.set(buffer.getChannelData(ch).subarray(offset, offset + frames), ch * frames);
+  return (targetTime: number) => {
+    const endSample = Math.min(buffer.length, Math.ceil(targetTime * sampleRate));
+    while (nextSample < endSample) {
+      const frames = Math.min(AUDIO_CHUNK_FRAMES, endSample - nextSample);
+      const planar = new Float32Array(frames * channels);
+      for (let ch = 0; ch < channels; ch++) {
+        planar.set(buffer.getChannelData(ch).subarray(nextSample, nextSample + frames), ch * frames);
+      }
+      const audioData = new AudioData({
+        format: 'f32-planar',
+        sampleRate,
+        numberOfFrames: frames,
+        numberOfChannels: channels,
+        timestamp: Math.round(((nextSample - clipStartSample) / sampleRate) * 1_000_000),
+        data: planar,
+      });
+      encoder.encode(audioData);
+      audioData.close();
+      nextSample += frames;
     }
-    const audioData = new AudioData({
-      format: 'f32-planar',
-      sampleRate,
-      numberOfFrames: frames,
-      numberOfChannels: channels,
-      timestamp: Math.round(((offset - startSample) / sampleRate) * 1_000_000),
-      data: planar,
-    });
-    encoder.encode(audioData);
-    audioData.close();
-    await waitForBackpressure(encoder, output);
-  }
+  };
 }
 
 export interface OfflineRenderOptions {
@@ -381,6 +402,9 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       state.camera.lookAt(...showCamera.target);
     }
 
+    const encodeAudioUpTo =
+      hasAudio && audioEncoder ? createAudioEncodeCursor(decodedAudio, options.startTime, audioEncoder) : null;
+
     for (let i = 0; i < frameCount; i++) {
       const showTime = options.startTime + i / FPS;
       showEngine.tick(showTime);
@@ -392,13 +416,17 @@ export async function renderShowOffline(options: OfflineRenderOptions): Promise<
       videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
       frame.close();
 
+      // Keeps audio's clock caught up to video's, frame by frame — see
+      // createAudioEncodeCursor's comment for why that matters.
+      encodeAudioUpTo?.(options.startTime + virtualElapsed);
+
       await waitForBackpressure(videoEncoder, output);
       options.onProgress?.((i + 1) / frameCount);
     }
 
-    if (hasAudio && audioEncoder) {
-      await encodeAudioBuffer(decodedAudio, options.startTime, options.endTime, audioEncoder, output);
-    }
+    // Covers any tail past the last video frame (frameCount is a rounded-up
+    // frame count, so it can end slightly after options.endTime).
+    encodeAudioUpTo?.(options.endTime);
 
     await videoEncoder.flush();
     videoEncoder.close();
