@@ -25,14 +25,31 @@ export class ShowEngine {
       this.lastTime = currentTime;
       return;
     }
-    const dueEvents = project.timeline.events.filter(
-      (event) => event.time > this.lastTime && event.time <= currentTime,
-    );
-    dueEvents.forEach((event) => this.dispatch(event, project));
+    const events = project.timeline.events;
+
+    // A cue's END crossing this window gets an explicit 'stop', independent
+    // of the cue's own recorded action (always 'trigger' today) — without
+    // this, a continuous-hold cue (flame/co2/spark) recorded from a hotkey
+    // hold had no way to end on its own during playback and fell back to
+    // the DEVICE's "Duração do Efeito" parameter instead of the cue's own
+    // recorded/resized length, so a 2s hold on the timeline could play back
+    // for however long the device parameter happened to say. Dispatched
+    // before the starts below so a cue ending the same instant another
+    // begins on the same device doesn't have its stop wrongly kill the new
+    // one (SimulationEffects3D matches 'stop' by device+type, not cue id).
+    const dueEnds = events.filter((event) => {
+      const end = event.time + event.duration;
+      return end > this.lastTime && end <= currentTime;
+    });
+    dueEnds.forEach((event) => this.dispatch(event, project, 'stop'));
+
+    const dueStarts = events.filter((event) => event.time > this.lastTime && event.time <= currentTime);
+    dueStarts.forEach((event) => this.dispatch(event, project, event.action));
+
     this.lastTime = currentTime;
   }
 
-  private dispatch(event: TimelineEvent, project: Project): void {
+  private dispatch(event: TimelineEvent, project: Project, action: TimelineEvent['action']): void {
     for (const deviceId of this.resolveTargets(event, project)) {
       const device = project.devices.find((d) => d.id === deviceId);
       if (!device || !device.enabled) continue;
@@ -42,7 +59,7 @@ export class ShowEngine {
       eventBus.emit('SIMULATION_TRIGGER', {
         deviceId,
         simulationType: definition.simulationType,
-        action: event.action,
+        action,
         parameters: {
           ...definition.defaultParameters,
           ...device.customProperties,
