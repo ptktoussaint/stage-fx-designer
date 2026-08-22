@@ -12,6 +12,23 @@ import { isTypingInField } from '../utils/dom';
 const HOLD_REPEAT_INTERVAL_MS = 250;
 
 /**
+ * How long a keyup waits before it's trusted as a real release. Some
+ * OS/browser combinations (observed on certain Linux/X11 setups without
+ * "detectable autorepeat" enabled) send a genuine keyup immediately
+ * followed by a new keydown for EVERY tick of a held key's OS-level
+ * typematic repeat, instead of a single sustained keydown with
+ * `repeat: true` — so a real physical hold looks, at the DOM event level,
+ * indistinguishable from rapid tap-tap-tap-tap. Reacting to every one of
+ * those keyups instantly (as a genuine release) killed and instantly
+ * recreated the effect on each cycle — the "piscando" (flickering) instead
+ * of a steady continuous jet. Debouncing the release absorbs that: a keydown
+ * for the same code arriving before this elapses cancels the pending
+ * release, so it reads as one continuous hold. Short enough to still feel
+ * instant for an intentional tap-and-release.
+ */
+const RELEASE_DEBOUNCE_MS = 150;
+
+/**
  * Live-performance trigger engine: press a bound key, fire the effect(s) on
  * its devices immediately via the same SIMULATION_TRIGGER the Show Engine
  * and Inspector's "Test Trigger" use — so the 2D pulse and 3D effect react
@@ -45,8 +62,11 @@ export function useHotkeyEngine(): void {
   const heldCodes = useRef<Set<string>>(new Set());
   const lastFireByCode = useRef<Map<string, number>>(new Map());
   const rafRef = useRef<number | null>(null);
+  const pendingReleaseTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
+    const pendingTimers = pendingReleaseTimers.current;
+
     const fireForCode = (code: string) => {
       const { hotkeys, devices } = useProjectStore.getState().project;
       const binding = hotkeys.find((h) => h.code === code);
@@ -128,6 +148,15 @@ export function useHotkeyEngine(): void {
       if (!binding || binding.deviceIds.length === 0) return;
       e.preventDefault();
 
+      // A same-code keydown arriving before a pending release's debounce
+      // elapsed means that keyup was an OS-repeat artifact, not a real
+      // release — cancel it so the effect keeps reading as one held stream.
+      const pending = pendingTimers.get(e.code);
+      if (pending != null) {
+        clearTimeout(pending);
+        pendingTimers.delete(e.code);
+      }
+
       // Own repeat loop drives sustained firing; ignore the OS's typematic
       // repeat entirely (see doc comment above for why it can't be trusted).
       if (e.repeat) return;
@@ -143,14 +172,24 @@ export function useHotkeyEngine(): void {
       if (!heldCodes.current.has(e.code)) return;
       heldCodes.current.delete(e.code);
       lastFireByCode.current.delete(e.code);
-      releaseForCode(e.code);
+
+      const timer = setTimeout(() => {
+        pendingTimers.delete(e.code);
+        releaseForCode(e.code);
+      }, RELEASE_DEBOUNCE_MS);
+      pendingTimers.set(e.code, timer);
     };
 
     const releaseAllHeld = () => {
       const codes = Array.from(heldCodes.current);
       heldCodes.current.clear();
       lastFireByCode.current.clear();
-      codes.forEach(releaseForCode);
+      // Losing focus entirely — flush right away rather than waiting out
+      // the debounce, since no further keydown will arrive to cancel it.
+      pendingTimers.forEach((timer) => clearTimeout(timer));
+      const pendingCodes = Array.from(pendingTimers.keys());
+      pendingTimers.clear();
+      new Set([...codes, ...pendingCodes]).forEach(releaseForCode);
     };
 
     const onVisibilityChange = () => {
@@ -168,6 +207,8 @@ export function useHotkeyEngine(): void {
       window.removeEventListener('blur', releaseAllHeld);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      pendingTimers.forEach((timer) => clearTimeout(timer));
+      pendingTimers.clear();
     };
   }, []);
 }
