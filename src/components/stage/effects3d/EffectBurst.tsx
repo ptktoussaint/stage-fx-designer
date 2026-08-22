@@ -1,20 +1,31 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import type { Mesh, MeshBasicMaterial } from 'three';
+import { AdditiveBlending, Color, Quaternion, Vector3, type Mesh, type MeshBasicMaterial } from 'three';
 import { directionFromAngle, type Effect3DProps } from './types';
 
-const PARTICLE_COUNT = 16;
-const RISE_DURATION = 0.55;
-const FALL_DURATION = 0.7;
-const GRAVITY = 4;
+const PARTICLE_COUNT = 18;
+// Real mine/comet shells crack open almost instantly — a brief tap should
+// already show the full burst, not a slow half-second climb to it.
+const RISE_DURATION = 0.14;
+const FALL_DURATION = 0.75;
+const GRAVITY = 5;
+const HOT_WHITE = new Color('#ffffff');
+const UP = new Vector3(0, 1, 0);
 
-/** Fast rise to apex height then a radial firework-style burst that falls and fades — mine, comet. */
+/**
+ * Fast rise to apex then a radial firework-style burst of glowing
+ * comet-trail sparks that arc, fall and fade — mine, comet. Each spark is
+ * stretched and rotated to face its own instantaneous (gravity-affected)
+ * velocity direction so it reads as a short bright trail rather than a
+ * round dot, closer to how a real firework burst looks on camera.
+ */
 export function EffectBurst({ id, position, color, height, angle, yaw, width, onDone }: Effect3DProps) {
   const coreRef = useRef<Mesh | null>(null);
   const sparkRefs = useRef<(Mesh | null)[]>([]);
   const elapsed = useRef(0);
   const done = useRef(false);
   const direction = useMemo(() => directionFromAngle(angle, yaw), [angle, yaw]);
+  const sparkColor = useMemo(() => new Color(color), [color]);
 
   const sparks = useMemo(
     () =>
@@ -30,6 +41,11 @@ export function EffectBurst({ id, position, color, height, angle, yaw, width, on
       }),
     [],
   );
+
+  // Reused scratch objects for per-frame quaternion orientation — avoids
+  // allocating a new Vector3/Quaternion for every spark on every frame.
+  const scratchDir = useMemo(() => new Vector3(), []);
+  const scratchQuat = useMemo(() => new Quaternion(), []);
 
   useFrame((_, delta) => {
     if (done.current) return;
@@ -55,9 +71,19 @@ export function EffectBurst({ id, position, color, height, angle, yaw, width, on
         if (!mesh) return;
         const x = apexX + s.vx * burstT * width;
         const z = apexZ + s.vz * burstT * width;
+        const vy = s.vy * width - GRAVITY * burstT;
         const y = apexY + s.vy * burstT * width - 0.5 * GRAVITY * burstT * burstT;
         mesh.position.set(x, Math.max(0, y), z);
-        (mesh.material as MeshBasicMaterial).opacity = Math.max(0, 1 - progress);
+
+        scratchDir.set(s.vx * width, vy, s.vz * width).normalize();
+        scratchQuat.setFromUnitVectors(UP, scratchDir);
+        mesh.quaternion.copy(scratchQuat);
+        const speed = Math.min(2.5, Math.hypot(s.vx * width, vy, s.vz * width));
+        mesh.scale.set(1, 0.6 + speed * 0.5, 1);
+
+        const mat = mesh.material as MeshBasicMaterial;
+        mat.color.lerpColors(HOT_WHITE, sparkColor, Math.min(1, progress * 1.4));
+        mat.opacity = Math.max(0, 1 - progress);
       });
     }
 
@@ -71,12 +97,17 @@ export function EffectBurst({ id, position, color, height, angle, yaw, width, on
     <group position={position}>
       <mesh ref={coreRef}>
         <sphereGeometry args={[0.08, 8, 8]} />
-        <meshBasicMaterial color={color} transparent opacity={0} />
+        <meshBasicMaterial color={color} transparent opacity={0} blending={AdditiveBlending} depthWrite={false} />
       </mesh>
       {sparks.map((_, i) => (
-        <mesh key={i} ref={(el) => { sparkRefs.current[i] = el; }}>
-          <sphereGeometry args={[0.05, 6, 6]} />
-          <meshBasicMaterial color={color} transparent opacity={0} />
+        <mesh
+          key={i}
+          ref={(el) => {
+            sparkRefs.current[i] = el;
+          }}
+        >
+          <sphereGeometry args={[0.055, 6, 6]} />
+          <meshBasicMaterial color={HOT_WHITE} transparent opacity={0} blending={AdditiveBlending} depthWrite={false} />
         </mesh>
       ))}
     </group>

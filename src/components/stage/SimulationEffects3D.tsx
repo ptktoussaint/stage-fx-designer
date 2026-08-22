@@ -47,9 +47,16 @@ const MAX_CONCURRENT_EFFECTS = 40;
 /**
  * Simulation types whose visual is a continuous stream rather than a
  * one-off burst — a held hotkey should read as one sustained jet, not a
- * pile of separate mini-effects stacking up every retrigger.
+ * pile of separate mini-effects stacking up every retrigger. Flame belongs
+ * here too: a real fire-machine jet stays lit as one continuous flame while
+ * triggered, and without this a held hotkey stacks several independent
+ * flame instances on top of each other — their additive blending piles up
+ * fast and washes the whole thing out to solid white. Mine/comet are
+ * deliberately excluded: a real pyro mine is a one-shot burst, and holding
+ * its hotkey firing several distinct bursts in a row is the realistic
+ * behavior, not a bug.
  */
-const CONTINUOUS_HOLD_TYPES = new Set<SimulationType>(['co2', 'spark']);
+const CONTINUOUS_HOLD_TYPES = new Set<SimulationType>(['flame', 'co2', 'spark']);
 
 /**
  * How long a continuous-hold effect (CO2/spark) stays sustained after a
