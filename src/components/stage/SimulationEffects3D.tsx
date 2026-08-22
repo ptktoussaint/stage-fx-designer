@@ -59,15 +59,16 @@ const MAX_CONCURRENT_EFFECTS = 40;
 const CONTINUOUS_HOLD_TYPES = new Set<SimulationType>(['flame', 'co2', 'spark']);
 
 /**
- * How long a continuous-hold effect (CO2/spark) stays sustained after a
- * trigger before it starts decaying. Comfortably longer than the hotkey
- * engine's own HOLD_REPEAT_INTERVAL_MS (250ms) so consecutive retriggers
- * from a held key always land before the previous one runs out and refresh
- * the same instance's holdUntil in place — instead of each retrigger
- * spawning its own independent burst, which is what read as "several mini
- * triggers" rather than one held effect.
+ * Fallback self-expiry for a continuous-hold effect (flame/CO2/spark) when
+ * nothing ever explicitly stops it — e.g. the Inspector's "Testar Disparo"
+ * button or a Timeline-driven trigger, neither of which has a keyup to pair
+ * with. Live hotkey use doesn't rely on this at all: useHotkeyEngine emits
+ * an explicit 'stop' the instant the key comes up (see the handler below),
+ * which ends the effect on the spot — this timer only exists so a one-shot
+ * trigger with no matching 'stop' doesn't run forever. Falls back to this
+ * constant if the device has no numeric `duration` parameter of its own.
  */
-const HOLD_GRACE_MS = 400;
+const DEFAULT_SELF_EXPIRE_SECONDS = 1.5;
 
 interface ActiveEffect {
   id: string;
@@ -81,6 +82,8 @@ interface ActiveEffect {
   width: number;
   shape?: EffectShape;
   simulationType: SimulationType;
+  /** Self-expiry timestamp (performance.now() clock) — only ever used as a
+   * fallback if no explicit 'stop' arrives; see DEFAULT_SELF_EXPIRE_SECONDS. */
   holdUntil: number;
 }
 
@@ -89,7 +92,20 @@ export function SimulationEffects3D() {
 
   useEffect(
     () =>
-      eventBus.on('SIMULATION_TRIGGER', ({ deviceId, simulationType, parameters }) => {
+      eventBus.on('SIMULATION_TRIGGER', ({ deviceId, simulationType, action, parameters }) => {
+        if (action === 'stop') {
+          // Key-up from useHotkeyEngine: end this device's continuous-hold
+          // effect right now, no fade — that's what makes a quick tap read
+          // as a quick tap instead of lingering for a fixed grace window
+          // regardless of how briefly the key was actually held. Ignored
+          // for one-shot families (mine/comet, ...): those always finish
+          // their own fixed animation independent of hold duration.
+          if (CONTINUOUS_HOLD_TYPES.has(simulationType as SimulationType)) {
+            setActive((prev) => prev.filter((e) => !(e.deviceId === deviceId && e.simulationType === simulationType)));
+          }
+          return;
+        }
+
         const project = useProjectStore.getState().project;
         const device = project.devices.find((d) => d.id === deviceId);
         if (!device) return;
@@ -105,9 +121,10 @@ export function SimulationEffects3D() {
         const angle = typeof parameters.angle === 'number' ? parameters.angle : 90;
         const width = typeof parameters.width === 'number' ? parameters.width : 1;
         const shape = typeof parameters.shape === 'string' ? (parameters.shape as EffectShape) : undefined;
+        const selfExpireSeconds = typeof parameters.duration === 'number' ? parameters.duration : DEFAULT_SELF_EXPIRE_SECONDS;
 
         const position: [number, number, number] = [device.position.x, originY, device.position.y];
-        const holdUntil = performance.now() + HOLD_GRACE_MS;
+        const holdUntil = performance.now() + selfExpireSeconds * 1000;
 
         setActive((prev) => {
           if (CONTINUOUS_HOLD_TYPES.has(simulationType as SimulationType)) {

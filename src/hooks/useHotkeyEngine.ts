@@ -29,6 +29,13 @@ const HOLD_REPEAT_INTERVAL_MS = 250;
  * fire also writes a TimelineEvent at the current playhead, so performing
  * the show live builds its timeline as a byproduct.
  *
+ * Key release fires its own SIMULATION_TRIGGER with action 'stop' (see
+ * releaseForCode) — SimulationEffects3D uses this to end a continuous-hold
+ * effect (flame/CO2/spark) the instant the key comes up, rather than
+ * inferring "released" from a timeout. That's what makes a quick tap read
+ * as a quick tap instead of lingering for however long some grace window
+ * happened to be.
+ *
  * Mount once near the app root, alongside useKeyboardShortcuts. While a
  * HotkeyCaptureButton is actively listening it uses a capture-phase
  * `stopPropagation()`, which halts this bubble-phase listener too — so a
@@ -74,6 +81,30 @@ export function useHotkeyEngine(): void {
       });
     };
 
+    const releaseForCode = (code: string) => {
+      const { hotkeys, devices } = useProjectStore.getState().project;
+      const binding = hotkeys.find((h) => h.code === code);
+      if (!binding || binding.deviceIds.length === 0) return;
+
+      binding.deviceIds.forEach((deviceId) => {
+        const device = devices.find((d) => d.id === deviceId);
+        if (!device || !device.enabled) return;
+        const definition = getDeviceDefinition(device.definitionId);
+        if (!definition) return;
+
+        // Tells SimulationEffects3D to end this device's continuous-hold
+        // effect (flame/CO2/spark) immediately — see its CONTINUOUS_HOLD_TYPES
+        // handling. Ignored for one-shot families (mine/comet, ...), which
+        // always run their own fixed animation regardless of hold duration.
+        eventBus.emit('SIMULATION_TRIGGER', {
+          deviceId,
+          simulationType: definition.simulationType,
+          action: 'stop',
+          parameters: {},
+        });
+      });
+    };
+
     const tick = () => {
       const now = performance.now();
       heldCodes.current.forEach((code) => {
@@ -109,13 +140,17 @@ export function useHotkeyEngine(): void {
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
+      if (!heldCodes.current.has(e.code)) return;
       heldCodes.current.delete(e.code);
       lastFireByCode.current.delete(e.code);
+      releaseForCode(e.code);
     };
 
     const releaseAllHeld = () => {
+      const codes = Array.from(heldCodes.current);
       heldCodes.current.clear();
       lastFireByCode.current.clear();
+      codes.forEach(releaseForCode);
     };
 
     const onVisibilityChange = () => {

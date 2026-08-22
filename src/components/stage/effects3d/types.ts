@@ -27,12 +27,14 @@ export interface Effect3DProps {
   shape?: EffectShape;
   /** Drives per-type styling within a shared family — e.g. EffectJet renders flame/co2/spark differently. */
   simulationType: SimulationType;
-  /** For continuous-hold effects (CO2/spark jets): timestamp (performance.now()
-   * clock) up to which the effect should stay sustained at full strength —
-   * refreshed forward on every retrigger while a hotkey is held, so the same
-   * mounted instance keeps flowing instead of a new one stacking on top.
-   * Once `performance.now()` passes it, the effect decays and finishes.
-   * Ignored by effect families that don't support continuous hold. */
+  /** For continuous-hold effects (flame/CO2/spark jets): self-expiry
+   * fallback (performance.now() clock) used only when nothing ever
+   * explicitly stops the effect — e.g. a one-shot Test Trigger or
+   * Timeline-driven cue, neither of which has a keyup to pair with. Live
+   * hotkey use doesn't rely on this: SimulationEffects3D removes the effect
+   * immediately on the hotkey's key-up, so the component just renders at
+   * full strength for as long as it stays mounted. Ignored by effect
+   * families that don't support continuous hold. */
   holdUntil?: number;
   onDone: (id: string) => void;
 }

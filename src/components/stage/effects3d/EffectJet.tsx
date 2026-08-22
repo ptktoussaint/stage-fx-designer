@@ -32,17 +32,17 @@ const BASE_CONE_GEOMETRY = new ConeGeometry(1, 1, 8).translate(0, 0.5, 0);
 const STREAK_GEOMETRY = new CylinderGeometry(1, 1, 1, 4);
 
 /**
- * Real pyro/CO2 hits full strength almost the instant it's triggered — a
- * brief attack, a held burst, then it dies back down. All three families
- * below share that attack/hold/decay envelope instead of the old "particles
- * slowly travel from the nozzle to the tip over the whole effect duration"
- * shape, which read as a gradual bloom rather than a triggered blast.
- *
- * CO2 and spark additionally support a continuous hold (`holdUntil`,
- * refreshed by SimulationEffects3D on every retrigger from a held hotkey):
- * their particles loop continuously while held instead of finishing a fixed
- * one-shot arc, so holding the key reads as one sustained jet rather than a
- * pile of separate bursts stacking on top of each other.
+ * Flame/CO2/spark render at full strength for as long as they're mounted —
+ * no attack ramp-in or decay fade-out at the effect level — because
+ * activation is now edge-triggered from real key state (see
+ * SimulationEffects3D's CONTINUOUS_HOLD_TYPES handling and
+ * useHotkeyEngine's release signal): the component mounts the instant a
+ * hotkey is pressed and is unmounted the instant it's released, so the
+ * mount/unmount lifecycle IS the on/off state. A fade here would make the
+ * effect visibly outlast a quick tap, which is exactly the bug this
+ * replaced — every particle still has its own internal travel/fade
+ * animation (a puff or streak's natural life), just not tied to the
+ * effect's activation state.
  */
 export function EffectJet(props: Effect3DProps) {
   if (props.simulationType === 'flame') return <FlameJet {...props} />;
@@ -50,26 +50,11 @@ export function EffectJet(props: Effect3DProps) {
   return <SparkJet {...props} />;
 }
 
-/** Wraps `v` into [0, cycle) — the saw-tooth used to keep a particle looping through a fixed travel/fade arc for as long as an effect is held. */
+/** Wraps `v` into [0, cycle) — the saw-tooth that keeps a particle looping through its own travel/fade arc for as long as the effect is mounted. */
 function wrapTime(v: number, cycle: number): number {
   return ((v % cycle) + cycle) % cycle;
 }
 
-/**
- * A particle's local position within its travel/fade cycle: loops
- * (wraps every `cycle` seconds) while still held, so a continuous stream of
- * particles is always mid-flight; once released (now >= holdUntil) the wrap
- * freezes at that instant and time keeps counting up linearly instead of
- * wrapping — so whatever's in flight finishes its current arc once and
- * fades, rather than snapping back to the nozzle for another lap.
- */
-function continuousLocalTime(now: number, holdUntil: number, cycle: number, phase: number): number {
-  if (now < holdUntil) return wrapTime(now / 1000 + phase, cycle);
-  return wrapTime(holdUntil / 1000 + phase, cycle) + (now - holdUntil) / 1000;
-}
-
-const FLAME_ATTACK = 0.05;
-const FLAME_DECAY = 0.5;
 const FLAME_EMBER_CYCLE = 0.5;
 const FLAME_SMOKE_CYCLE = 1.3;
 
@@ -155,11 +140,6 @@ function FlameJet({ id, position, color, height, angle, yaw, width, holdUntil, o
     const now = performance.now();
     const holdUntilSafe = holdUntil ?? now;
 
-    let envelope: number;
-    if (t < FLAME_ATTACK) envelope = t / FLAME_ATTACK;
-    else if (now < holdUntilSafe) envelope = 1;
-    else envelope = Math.max(0, 1 - (now - holdUntilSafe) / 1000 / FLAME_DECAY);
-
     if (coreRef.current) {
       // Kept deliberately small — a bright glimpse of the hottest inner
       // flame near the base, not a second full-size cone. At the tongues'
@@ -168,8 +148,8 @@ function FlameJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       const mat = coreRef.current.material as MeshBasicMaterial;
       const flicker = 0.9 + Math.sin(t * 24) * 0.08;
       const r = width * 0.09 * flicker;
-      coreRef.current.scale.set(r, Math.max(0.001, height * 0.35 * envelope * flicker), r);
-      mat.opacity = envelope * 0.7;
+      coreRef.current.scale.set(r, Math.max(0.001, height * 0.35 * flicker), r);
+      mat.opacity = 0.7;
     }
 
     tongues.forEach((tg, i) => {
@@ -178,23 +158,23 @@ function FlameJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       const mat = mesh.material as MeshBasicMaterial;
       const flicker = 0.85 + Math.sin(t * tg.flickerSpeed + tg.flickerPhase) * 0.18;
       const r = width * 0.62 * tg.radiusScale * flicker;
-      mesh.scale.set(r, Math.max(0.001, height * tg.heightScale * envelope * flicker), r);
+      mesh.scale.set(r, Math.max(0.001, height * tg.heightScale * flicker), r);
       mesh.rotation.y = tg.angleOffset + Math.sin(t * tg.flickerSpeed * 0.5 + tg.flickerPhase) * 0.08;
-      mesh.rotation.z = tg.tiltOffset * (1 - envelope * 0.3);
+      mesh.rotation.z = tg.tiltOffset * 0.7;
       // Set directly rather than lerped from HOT_CORE: three.js interpolates
       // Color in linear light space, and blending toward a near-white color
       // there — even at a light weighting — comes out visibly paler than
       // the naive hex-level math suggests, washing the column out instead
       // of the intended vivid orange/red.
       mat.color.copy(deviceColor);
-      mat.opacity = envelope * 0.88;
+      mat.opacity = 0.88;
     });
 
     embers.forEach((e, i) => {
       const mesh = emberRefs.current[i];
       if (!mesh) return;
       const mat = mesh.material as MeshBasicMaterial;
-      const local = continuousLocalTime(now, holdUntilSafe, FLAME_EMBER_CYCLE, e.phase);
+      const local = wrapTime(now / 1000 + e.phase, FLAME_EMBER_CYCLE);
       const progress = local / FLAME_EMBER_CYCLE;
       const travel = Math.min(1.15, progress * 1.4) * height;
       mesh.position.set(Math.cos(e.angle) * e.radius * width, travel, Math.sin(e.angle) * e.radius * width);
@@ -206,7 +186,7 @@ function FlameJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       const mesh = smokeRefs.current[i];
       if (!mesh) return;
       const mat = mesh.material as MeshBasicMaterial;
-      const local = continuousLocalTime(now, holdUntilSafe, FLAME_SMOKE_CYCLE, p.phase);
+      const local = wrapTime(now / 1000 + p.phase, FLAME_SMOKE_CYCLE);
       const progress = local / FLAME_SMOKE_CYCLE;
       const rise = height * (1 + progress * p.drift * 2);
       const spread = 1 + progress * 2.2;
@@ -215,7 +195,10 @@ function FlameJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       mat.opacity = Math.min(1, progress * 4) * Math.max(0, 1 - progress) * 0.3;
     });
 
-    if (now - holdUntilSafe > Math.max(FLAME_DECAY, FLAME_EMBER_CYCLE, FLAME_SMOKE_CYCLE) * 1000 + 100) {
+    // Self-expire fallback only — see DEFAULT_SELF_EXPIRE_SECONDS in
+    // SimulationEffects3D. A live-hotkey flame never reaches this: it's
+    // unmounted by the parent the instant the key comes up.
+    if (now >= holdUntilSafe) {
       done.current = true;
       onDone(id);
     }
@@ -317,7 +300,7 @@ function Co2Jet({ id, position, color, height, angle, yaw, width, shape, holdUnt
       if (!mesh) return;
       const mat = mesh.material as MeshBasicMaterial;
 
-      const local = continuousLocalTime(now, holdUntilSafe, CO2_CYCLE, p.phase);
+      const local = wrapTime(now / 1000 + p.phase, CO2_CYCLE);
       const progress = local / CO2_CYCLE;
       const attackProgress = Math.min(1, local / CO2_ATTACK);
       const travelProgress = Math.min(1, progress);
@@ -343,7 +326,10 @@ function Co2Jet({ id, position, color, height, angle, yaw, width, shape, holdUnt
       mat.opacity = attackProgress * Math.max(0, 1 - fadeProgress) * 0.92;
     });
 
-    if (now - holdUntilSafe > (CO2_CYCLE + 0.15) * 1000) {
+    // Self-expire fallback only — see DEFAULT_SELF_EXPIRE_SECONDS in
+    // SimulationEffects3D. A live-hotkey CO2 jet never reaches this: it's
+    // unmounted by the parent the instant the key comes up.
+    if (now >= holdUntilSafe) {
       done.current = true;
       onDone(id);
     }
@@ -429,7 +415,7 @@ function SparkJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       if (!mesh) return;
       const mat = mesh.material as MeshBasicMaterial;
 
-      const local = continuousLocalTime(now, holdUntilSafe, SPARK_CYCLE, s.phase);
+      const local = wrapTime(now / 1000 + s.phase, SPARK_CYCLE);
       const rise = Math.max(0, v0 * local - 0.5 * gravity * local * local);
       const jitter = Math.min(1, local / apexTime) * width * 0.18 * s.spread;
       mesh.position.set(
@@ -451,10 +437,6 @@ function SparkJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       const mesh = glowRefs.current[i];
       if (!mesh) return;
       const mat = mesh.material as MeshBasicMaterial;
-      if (now >= holdUntilSafe) {
-        mat.opacity = Math.max(0, mat.opacity - 0.05);
-        return;
-      }
       const flicker = 0.5 + Math.sin(now * 0.02 + g.flickerPhase) * 0.5;
       const riseHeight = height * g.heightFrac;
       mesh.position.set(
@@ -465,7 +447,10 @@ function SparkJet({ id, position, color, height, angle, yaw, width, holdUntil, o
       mat.opacity = 0.35 + flicker * 0.5;
     });
 
-    if (now - holdUntilSafe > SPARK_CYCLE * 1000 + 100) {
+    // Self-expire fallback only — see DEFAULT_SELF_EXPIRE_SECONDS in
+    // SimulationEffects3D. A live-hotkey spark fountain never reaches this:
+    // it's unmounted by the parent the instant the key comes up.
+    if (now >= holdUntilSafe) {
       done.current = true;
       onDone(id);
     }
