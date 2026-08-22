@@ -105,8 +105,10 @@ export function setDevicesLocked(deviceIds: string[], locked: boolean): void {
   dispatch(new SetDevicesLockedCommand(deviceIds, locked));
 }
 
-export function addTimelineEvent(event: Omit<TimelineEvent, 'id'>): void {
-  dispatch(new AddTimelineEventCommand(event));
+export function addTimelineEvent(event: Omit<TimelineEvent, 'id'>): string {
+  const cmd = new AddTimelineEventCommand(event);
+  dispatch(cmd);
+  return cmd.event.id;
 }
 
 export function updateTimelineEvent(

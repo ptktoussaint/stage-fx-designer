@@ -377,6 +377,44 @@
   opacity: 1;
 }
 
+/* Side handles to trim/extend a cue's duration by dragging — a slightly
+   wider invisible hit area than the visible bar, so they're easy to grab
+   without needing to pixel-hunt the block's exact edge. */
+.timeline-event__handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.timeline-event__handle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 2px;
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.timeline-event:hover .timeline-event__handle::after,
+.timeline-event--selected .timeline-event__handle::after {
+  opacity: 1;
+}
+
+.timeline-event__handle--start {
+  left: -2px;
+}
+
+.timeline-event__handle--end {
+  right: -2px;
+}
+
 .timeline-event__delete {
   position: absolute;
   top: -8px;

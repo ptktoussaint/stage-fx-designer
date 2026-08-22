@@ -3,8 +3,13 @@ import { useProjectStore } from '../stores/projectStore';
 import { usePlaybackStore } from '../stores/playbackStore';
 import { getDeviceDefinition } from '../devices/registry';
 import { eventBus } from '../engine/eventBus';
-import { addTimelineEvent } from '../commands';
+import { addTimelineEvent, updateTimelineEvent } from '../commands';
 import { isTypingInField } from '../utils/dom';
+
+/** Placeholder duration a recorded cue starts at — grown live while the key
+ * stays held (see fireForCode) and finalized on release. Small enough to be
+ * visually negligible if a hold turns out to be a genuine instant tap. */
+const RECORDING_INITIAL_DURATION = 0.05;
 
 /** Minimum time between re-fires of the same held key. Fast enough to read
  * as "sustained" (roughly 4 fires/sec) but nowhere near the browser's raw
@@ -42,9 +47,13 @@ const RELEASE_DEBOUNCE_MS = 150;
  * silently dropped all but the last one back to a single shot. Tracking
  * "currently held" ourselves and ticking every held code independently at
  * HOLD_REPEAT_INTERVAL_MS fixes that regardless of how many keys are held.
- * While Record is armed AND the transport is actually playing, each allowed
- * fire also writes a TimelineEvent at the current playhead, so performing
- * the show live builds its timeline as a byproduct.
+ * While Record is armed AND the transport is actually playing, the first
+ * fire of a hold also writes a TimelineEvent at the current playhead, so
+ * performing the show live builds its timeline as a byproduct. Every
+ * following retrigger from the SAME held key extends that one event's
+ * duration live (see recordingEvents) instead of writing a new cue every
+ * ~250ms — a held hotkey used to record a chain of small overlapping
+ * rectangles instead of one continuous marking.
  *
  * Key release fires its own SIMULATION_TRIGGER with action 'stop' (see
  * releaseForCode) — SimulationEffects3D uses this to end a continuous-hold
@@ -63,9 +72,13 @@ export function useHotkeyEngine(): void {
   const lastFireByCode = useRef<Map<string, number>>(new Map());
   const rafRef = useRef<number | null>(null);
   const pendingReleaseTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** In-progress recorded cue per device, while Record is armed and a bound
+   * key is held for that device — see the class doc comment above. */
+  const recordingEvents = useRef<Map<string, { eventId: string; startTime: number }>>(new Map());
 
   useEffect(() => {
     const pendingTimers = pendingReleaseTimers.current;
+    const recording = recordingEvents.current;
 
     const fireForCode = (code: string) => {
       const { hotkeys, devices } = useProjectStore.getState().project;
@@ -89,14 +102,24 @@ export function useHotkeyEngine(): void {
         });
 
         if (shouldRecord) {
-          addTimelineEvent({
-            time: playback.currentTime,
-            duration: 0.5,
-            targetType: 'device',
-            targetId: deviceId,
-            action: 'trigger',
-            parameters: {},
-          });
+          const inProgress = recording.get(deviceId);
+          if (inProgress) {
+            // Same held key, same device — grow the existing cue instead of
+            // writing another one, so the whole hold ends up as one
+            // continuous marking on the timeline.
+            const duration = Math.max(RECORDING_INITIAL_DURATION, playback.currentTime - inProgress.startTime);
+            useProjectStore.getState()._updateTimelineEvent(inProgress.eventId, { duration });
+          } else {
+            const eventId = addTimelineEvent({
+              time: playback.currentTime,
+              duration: RECORDING_INITIAL_DURATION,
+              targetType: 'device',
+              targetId: deviceId,
+              action: 'trigger',
+              parameters: {},
+            });
+            recording.set(deviceId, { eventId, startTime: playback.currentTime });
+          }
         }
       });
     };
@@ -122,6 +145,24 @@ export function useHotkeyEngine(): void {
           action: 'stop',
           parameters: {},
         });
+
+        // Finalize the recorded cue grown live in fireForCode, if any —
+        // one proper undo-tracked commit for the whole hold, rather than
+        // one per retrigger.
+        const inProgress = recording.get(deviceId);
+        if (inProgress) {
+          recording.delete(deviceId);
+          const finalEvent = useProjectStore
+            .getState()
+            .project.timeline.events.find((ev) => ev.id === inProgress.eventId);
+          if (finalEvent) {
+            updateTimelineEvent(
+              inProgress.eventId,
+              { duration: RECORDING_INITIAL_DURATION },
+              { duration: finalEvent.duration },
+            );
+          }
+        }
       });
     };
 

@@ -3,8 +3,12 @@ import { useProjectStore } from '../../stores/projectStore';
 import { addTimelineEvent, removeTimelineEvent, updateTimelineEvent } from '../../commands';
 import { moveTrackOrder, reorderTrack, setTrackFolder } from '../../timeline/trackOrganization';
 import type { TimelineEvent, TimelineFolder, TimelineTargetType } from '../../types';
-import { TimelineEventBlock } from './TimelineEventBlock';
+import { TimelineEventBlock, type TimelineResizeEdge } from './TimelineEventBlock';
 import { Icon } from '../common/Icon';
+
+/** Floor on a cue's duration when resizing — keeps a dragged handle from
+ * collapsing it to zero/negative width. */
+const MIN_DURATION_SECONDS = 0.05;
 
 interface TimelineTrackProps {
   trackKey: string;
@@ -46,6 +50,13 @@ export function TimelineTrack({
   onToggleFolderMenu,
 }: TimelineTrackProps) {
   const dragRef = useRef<{ eventId: string; startClientX: number; startTime: number } | null>(null);
+  const resizeRef = useRef<{
+    eventId: string;
+    edge: TimelineResizeEdge;
+    startClientX: number;
+    startTime: number;
+    startDuration: number;
+  } | null>(null);
   const [, forceRerender] = useState(0);
 
   const handleLaneDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -60,25 +71,73 @@ export function TimelineTrack({
     dragRef.current = { eventId: event.id, startClientX: e.clientX, startTime: event.time };
   };
 
+  const handleResizeStart = (e: React.PointerEvent, event: TimelineEvent, edge: TimelineResizeEdge) => {
+    e.stopPropagation();
+    onSelectEvent(event.id);
+    resizeRef.current = {
+      eventId: event.id,
+      edge,
+      startClientX: e.clientX,
+      startTime: event.time,
+      startDuration: event.duration,
+    };
+  };
+
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag) return;
-      const deltaSeconds = (e.clientX - drag.startClientX) / pxPerSecond;
-      const nextTime = Math.max(0, drag.startTime + deltaSeconds);
-      useProjectStore.getState()._updateTimelineEvent(drag.eventId, { time: nextTime });
-      forceRerender((n) => n + 1);
+      if (drag) {
+        const deltaSeconds = (e.clientX - drag.startClientX) / pxPerSecond;
+        const nextTime = Math.max(0, drag.startTime + deltaSeconds);
+        useProjectStore.getState()._updateTimelineEvent(drag.eventId, { time: nextTime });
+        forceRerender((n) => n + 1);
+      }
+
+      const resize = resizeRef.current;
+      if (resize) {
+        const deltaSeconds = (e.clientX - resize.startClientX) / pxPerSecond;
+        if (resize.edge === 'end') {
+          const nextDuration = Math.max(MIN_DURATION_SECONDS, resize.startDuration + deltaSeconds);
+          useProjectStore.getState()._updateTimelineEvent(resize.eventId, { duration: nextDuration });
+        } else {
+          // Dragging the start edge shifts `time` while keeping the cue's
+          // end fixed, clamped so it can't cross 0 or eat past the end.
+          const maxDelta = resize.startDuration - MIN_DURATION_SECONDS;
+          const clampedDelta = Math.max(-resize.startTime, Math.min(deltaSeconds, maxDelta));
+          useProjectStore.getState()._updateTimelineEvent(resize.eventId, {
+            time: resize.startTime + clampedDelta,
+            duration: resize.startDuration - clampedDelta,
+          });
+        }
+        forceRerender((n) => n + 1);
+      }
     };
     const onUp = () => {
       const drag = dragRef.current;
-      if (!drag) return;
-      const finalEvent = useProjectStore
-        .getState()
-        .project.timeline.events.find((ev) => ev.id === drag.eventId);
-      if (finalEvent && finalEvent.time !== drag.startTime) {
-        updateTimelineEvent(drag.eventId, { time: drag.startTime }, { time: finalEvent.time });
+      if (drag) {
+        const finalEvent = useProjectStore
+          .getState()
+          .project.timeline.events.find((ev) => ev.id === drag.eventId);
+        if (finalEvent && finalEvent.time !== drag.startTime) {
+          updateTimelineEvent(drag.eventId, { time: drag.startTime }, { time: finalEvent.time });
+        }
+        dragRef.current = null;
       }
-      dragRef.current = null;
+
+      const resize = resizeRef.current;
+      if (resize) {
+        const finalEvent = useProjectStore
+          .getState()
+          .project.timeline.events.find((ev) => ev.id === resize.eventId);
+        if (finalEvent && (finalEvent.time !== resize.startTime || finalEvent.duration !== resize.startDuration)) {
+          updateTimelineEvent(
+            resize.eventId,
+            { time: resize.startTime, duration: resize.startDuration },
+            { time: finalEvent.time, duration: finalEvent.duration },
+          );
+        }
+        resizeRef.current = null;
+      }
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -185,6 +244,7 @@ export function TimelineTrack({
             isSelected={selectedEventIds.includes(event.id)}
             isOutsideTrim={event.time < trimStart || (trimEnd != null && event.time >= trimEnd)}
             onPointerDown={handleEventPointerDown}
+            onResizeStart={handleResizeStart}
             onDelete={(ev) => {
               removeTimelineEvent(ev);
               onSelectEvent(null);
