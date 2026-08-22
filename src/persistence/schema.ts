@@ -9,6 +9,14 @@ import { DEFAULT_STAGE_CONFIG } from '../types/stage';
 import { createId } from '../utils/id';
 import { getDeviceDefinition } from '../devices/registry';
 
+/** Simulation types whose effect duration is never user-configurable — see
+ * SimulationEffects3D and showEngine.dispatch. A project saved before this
+ * changed still carries a `duration` value baked into customProperties (it
+ * was only ever backfilled additively below, never stripped), so it's
+ * removed here on every load rather than left as a dead, no-longer-shown
+ * leftover that could still leak into a live "Testar Disparo" preview. */
+const FIXED_DURATION_SIMULATION_TYPES = new Set(['flame', 'co2', 'spark']);
+
 /**
  * Every persisted project carries schemaVersion, for future STRUCTURAL
  * changes (renaming/moving/reshaping existing data — add a `case N:` step
@@ -54,10 +62,11 @@ export function migrateProject(raw: unknown): Project | null {
     devices: (doc.devices ?? []).map((device) => {
       const definition = getDeviceDefinition(device.definitionId);
       if (!definition) return device;
-      return {
-        ...device,
-        customProperties: { ...definition.defaultParameters, ...device.customProperties },
-      };
+      const customProperties = { ...definition.defaultParameters, ...device.customProperties };
+      if (FIXED_DURATION_SIMULATION_TYPES.has(definition.simulationType)) {
+        delete customProperties.duration;
+      }
+      return { ...device, customProperties };
     }),
     platforms: doc.platforms ?? [],
     figures: (doc.figures ?? []).map((figure) => ({ ...figure, color: figure.color ?? DEFAULT_FIGURE_COLOR })),

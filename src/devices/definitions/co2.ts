@@ -10,14 +10,17 @@ export const co2Devices: DeviceDefinition[] = [
     namePrefix: 'CO2',
     footprint: { width: 0.3, depth: 0.3 },
     capabilities: {
-      variableDuration: true,
+      // Not user-configurable: how long the effect runs is always either
+      // "as long as the hotkey stays held" (live) or "the timeline cue's
+      // own recorded/resized length" (playback) — see SimulationEffects3D
+      // and showEngine.dispatch.
+      variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
       variableWidth: true,
     },
     defaultParameters: {
       height: 4,
-      duration: 1.5,
       intensity: 1,
       angle: 90,
       width: 1,

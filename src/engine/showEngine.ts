@@ -64,6 +64,13 @@ export class ShowEngine {
           ...definition.defaultParameters,
           ...device.customProperties,
           ...event.parameters,
+          // The cue's own recorded/resized length is what actually governs
+          // how long a continuous-hold effect (flame/co2/spark) plays back
+          // from the Timeline — always wins over anything a device or the
+          // cue's own parameters might carry (those types don't expose a
+          // duration parameter at all any more; this override just also
+          // guards a project saved before that change).
+          duration: event.duration,
         },
       });
     }

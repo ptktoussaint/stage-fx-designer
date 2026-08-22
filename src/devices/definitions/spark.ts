@@ -10,7 +10,11 @@ export const sparkDevices: DeviceDefinition[] = [
     namePrefix: 'SPARK',
     footprint: { width: 0.3, depth: 0.3 },
     capabilities: {
-      variableDuration: true,
+      // Not user-configurable: how long the effect runs is always either
+      // "as long as the hotkey stays held" (live) or "the timeline cue's
+      // own recorded/resized length" (playback) — see SimulationEffects3D
+      // and showEngine.dispatch.
+      variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
       variableWidth: true,
@@ -18,7 +22,6 @@ export const sparkDevices: DeviceDefinition[] = [
     },
     defaultParameters: {
       height: 5,
-      duration: 2,
       intensity: 0.9,
       angle: 90,
       width: 1,

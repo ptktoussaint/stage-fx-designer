@@ -10,14 +10,17 @@ export const fireDevices: DeviceDefinition[] = [
     namePrefix: 'FIRE',
     footprint: { width: 0.4, depth: 0.4 },
     capabilities: {
-      variableDuration: true,
+      // Not user-configurable: how long the effect runs is always either
+      // "as long as the hotkey stays held" (live) or "the timeline cue's
+      // own recorded/resized length" (playback) — see SimulationEffects3D
+      // and showEngine.dispatch.
+      variableDuration: false,
       variableIntensity: true,
       variableAngle: true,
       variableWidth: true,
     },
     defaultParameters: {
       height: 3,
-      duration: 1.2,
       intensity: 0.8,
       angle: 90,
       width: 1,
@@ -32,14 +35,13 @@ export const fireDevices: DeviceDefinition[] = [
     namePrefix: 'FIRE',
     footprint: { width: 0.5, depth: 0.5 },
     capabilities: {
-      variableDuration: true,
+      variableDuration: false,
       variableIntensity: true,
       variableAngle: false,
       variableWidth: true,
     },
     defaultParameters: {
       height: 2,
-      duration: 0.8,
       intensity: 1,
       width: 1,
     },
