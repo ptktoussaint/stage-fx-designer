@@ -10,6 +10,40 @@ import { Icon } from '../common/Icon';
  * collapsing it to zero/negative width. */
 const MIN_DURATION_SECONDS = 0.05;
 
+/** How close (in screen pixels) a dragged resize handle has to land next to
+ * another cue's edge before it snaps there — an "invisible mark" the user
+ * can drag onto so multiple simultaneous effects start/end together without
+ * needing to type exact numbers. Independent of zoom (converted to seconds
+ * against the current pxPerSecond below) so it feels the same at any zoom level. */
+const SNAP_PIXELS = 8;
+
+/** Every other cue's start/end time (across ALL tracks, not just this one —
+ * the whole point is aligning effects on DIFFERENT devices), excluding the
+ * cue currently being resized so it never snaps to its own edge. */
+function collectSnapCandidates(excludeEventId: string): number[] {
+  const candidates: number[] = [];
+  useProjectStore
+    .getState()
+    .project.timeline.events.forEach((ev) => {
+      if (ev.id === excludeEventId) return;
+      candidates.push(ev.time, ev.time + ev.duration);
+    });
+  return candidates;
+}
+
+function snapToNearest(value: number, candidates: number[], thresholdSeconds: number): number {
+  let snapped = value;
+  let bestDistance = thresholdSeconds;
+  for (const candidate of candidates) {
+    const distance = Math.abs(candidate - value);
+    if (distance <= bestDistance) {
+      bestDistance = distance;
+      snapped = candidate;
+    }
+  }
+  return snapped;
+}
+
 interface TimelineTrackProps {
   trackKey: string;
   label: string;
@@ -96,17 +130,23 @@ export function TimelineTrack({
       const resize = resizeRef.current;
       if (resize) {
         const deltaSeconds = (e.clientX - resize.startClientX) / pxPerSecond;
+        const snapThreshold = SNAP_PIXELS / pxPerSecond;
+        const candidates = collectSnapCandidates(resize.eventId);
         if (resize.edge === 'end') {
-          const nextDuration = Math.max(MIN_DURATION_SECONDS, resize.startDuration + deltaSeconds);
+          const rawEnd = resize.startTime + resize.startDuration + deltaSeconds;
+          const snappedEnd = snapToNearest(rawEnd, candidates, snapThreshold);
+          const nextDuration = Math.max(MIN_DURATION_SECONDS, snappedEnd - resize.startTime);
           useProjectStore.getState()._updateTimelineEvent(resize.eventId, { duration: nextDuration });
         } else {
           // Dragging the start edge shifts `time` while keeping the cue's
           // end fixed, clamped so it can't cross 0 or eat past the end.
-          const maxDelta = resize.startDuration - MIN_DURATION_SECONDS;
-          const clampedDelta = Math.max(-resize.startTime, Math.min(deltaSeconds, maxDelta));
+          const fixedEnd = resize.startTime + resize.startDuration;
+          const rawStart = resize.startTime + deltaSeconds;
+          const snappedStart = snapToNearest(rawStart, candidates, snapThreshold);
+          const clampedStart = Math.max(0, Math.min(snappedStart, fixedEnd - MIN_DURATION_SECONDS));
           useProjectStore.getState()._updateTimelineEvent(resize.eventId, {
-            time: resize.startTime + clampedDelta,
-            duration: resize.startDuration - clampedDelta,
+            time: clampedStart,
+            duration: fixedEnd - clampedStart,
           });
         }
         forceRerender((n) => n + 1);

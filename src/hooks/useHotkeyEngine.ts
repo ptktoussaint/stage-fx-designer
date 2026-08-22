@@ -99,6 +99,7 @@ export function useHotkeyEngine(): void {
           simulationType: definition.simulationType,
           action: 'trigger',
           parameters: { ...definition.defaultParameters, ...device.customProperties },
+          keepAlive: true,
         });
 
         if (shouldRecord) {

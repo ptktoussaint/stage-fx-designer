@@ -70,6 +70,25 @@ const CONTINUOUS_HOLD_TYPES = new Set<SimulationType>(['flame', 'co2', 'spark'])
  */
 const DEFAULT_SELF_EXPIRE_SECONDS = 1.5;
 
+/**
+ * Floor on the self-expire window for a trigger carrying `keepAlive: true`
+ * (a live hotkey hold's retrigger — see useHotkeyEngine's HOLD_REPEAT_INTERVAL_MS,
+ * 250ms). Root-caused from real hardware footage: with the device's own
+ * "Duração do Efeito" parameter set at or below that ~250ms retrigger
+ * cadence, each retrigger's holdUntil expired again before the NEXT
+ * retrigger arrived to push it forward — so the effect self-expired and got
+ * recreated every cycle, reading as a rapid on/off blink for as long as the
+ * key stayed held, even though the key was never actually released. A live
+ * hold's real end is always the explicit 'stop' on keyup (instant, no
+ * fade) — this keepAlive floor only has to outlast rAF/render jitter
+ * between retriggers, not represent any real visible duration, so it's
+ * safe to floor well above the retrigger interval regardless of how short
+ * the device's configured duration is. One-shot triggers (Inspector's
+ * "Testar Disparo", Show Engine timeline playback) never set keepAlive, so
+ * they keep honoring the configured duration exactly as before.
+ */
+const MIN_HOLD_KEEPALIVE_SECONDS = 1;
+
 interface ActiveEffect {
   id: string;
   deviceId: string;
@@ -92,7 +111,7 @@ export function SimulationEffects3D() {
 
   useEffect(
     () =>
-      eventBus.on('SIMULATION_TRIGGER', ({ deviceId, simulationType, action, parameters }) => {
+      eventBus.on('SIMULATION_TRIGGER', ({ deviceId, simulationType, action, parameters, keepAlive }) => {
         if (action === 'stop') {
           // Key-up from useHotkeyEngine: end this device's continuous-hold
           // effect right now, no fade — that's what makes a quick tap read
@@ -121,7 +140,12 @@ export function SimulationEffects3D() {
         const angle = typeof parameters.angle === 'number' ? parameters.angle : 90;
         const width = typeof parameters.width === 'number' ? parameters.width : 1;
         const shape = typeof parameters.shape === 'string' ? (parameters.shape as EffectShape) : undefined;
-        const selfExpireSeconds = typeof parameters.duration === 'number' ? parameters.duration : DEFAULT_SELF_EXPIRE_SECONDS;
+        const configuredSeconds = typeof parameters.duration === 'number' ? parameters.duration : DEFAULT_SELF_EXPIRE_SECONDS;
+        // See MIN_HOLD_KEEPALIVE_SECONDS: only widen the self-expire window
+        // for a live hold's own retrigger, never for a genuine one-shot
+        // trigger (Inspector/Timeline), which must keep honoring the
+        // configured duration exactly.
+        const selfExpireSeconds = keepAlive ? Math.max(configuredSeconds, MIN_HOLD_KEEPALIVE_SECONDS) : configuredSeconds;
 
         const position: [number, number, number] = [device.position.x, originY, device.position.y];
         const holdUntil = performance.now() + selfExpireSeconds * 1000;

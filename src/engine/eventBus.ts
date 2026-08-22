@@ -28,6 +28,12 @@ export type AppEventMap = {
     simulationType: string;
     action: TimelineEvent['action'];
     parameters: Record<string, number | string | boolean>;
+    /** Set by useHotkeyEngine's held-key loop on every retrigger of a live
+     * hold (never by the Inspector's one-shot "Testar Disparo" or the Show
+     * Engine's Timeline playback) — see SimulationEffects3D's
+     * MIN_HOLD_KEEPALIVE_SECONDS for why this needs to widen the
+     * continuous-hold self-expire safety margin. */
+    keepAlive?: boolean;
   };
 };
 
