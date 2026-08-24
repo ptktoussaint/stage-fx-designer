@@ -29,7 +29,7 @@ interface UiState {
   isStageSettingsOpen: boolean;
   isHotkeysPanelOpen: boolean;
   isClipRecording: boolean;
-  isPlaylistOpen: boolean;
+  isProjectPanelOpen: boolean;
   isAutoRendering: boolean;
   autoRenderProgress: number;
 
@@ -46,7 +46,7 @@ interface UiState {
   setStageSettingsOpen: (open: boolean) => void;
   setHotkeysPanelOpen: (open: boolean) => void;
   setClipRecording: (recording: boolean) => void;
-  setPlaylistOpen: (open: boolean) => void;
+  setProjectPanelOpen: (open: boolean) => void;
   setAutoRendering: (rendering: boolean) => void;
   setAutoRenderProgress: (progress: number) => void;
 }
@@ -66,7 +66,7 @@ export const useUiStore = create<UiState>((set) => ({
   isStageSettingsOpen: false,
   isHotkeysPanelOpen: false,
   isClipRecording: false,
-  isPlaylistOpen: false,
+  isProjectPanelOpen: false,
   isAutoRendering: false,
   autoRenderProgress: 0,
 
@@ -83,7 +83,7 @@ export const useUiStore = create<UiState>((set) => ({
   setStageSettingsOpen: (isStageSettingsOpen) => set({ isStageSettingsOpen }),
   setHotkeysPanelOpen: (isHotkeysPanelOpen) => set({ isHotkeysPanelOpen }),
   setClipRecording: (isClipRecording) => set({ isClipRecording }),
-  setPlaylistOpen: (isPlaylistOpen) => set({ isPlaylistOpen }),
+  setProjectPanelOpen: (isProjectPanelOpen) => set({ isProjectPanelOpen }),
   setAutoRendering: (isAutoRendering) => set({ isAutoRendering }),
   setAutoRenderProgress: (autoRenderProgress) => set({ autoRenderProgress }),
 }));

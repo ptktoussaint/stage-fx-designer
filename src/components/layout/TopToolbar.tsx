@@ -1,26 +1,22 @@
 import { useEffect, useRef } from 'react';
-import { useProjectStore, createEmptyProject } from '../../stores/projectStore';
+import { useProjectStore } from '../../stores/projectStore';
 import { usePlaybackStore } from '../../stores/playbackStore';
 import { useHistoryStore } from '../../stores/historyStore';
 import { useUiStore } from '../../stores/uiStore';
 import { undo, redo } from '../../commands';
-import type { ChangeEvent } from 'react';
 import { IconButton } from '../common/IconButton';
 import { Icon } from '../common/Icon';
 import { formatTime } from '../../utils/time';
-import { saveProjectToLocal } from '../../persistence/autosave';
-import { migrateProject } from '../../persistence/schema';
 import { Modal } from '../common/Modal';
 import { StageSettingsForm } from '../inspector/StageSettingsForm';
 import { HotkeysPanel } from '../hotkeys/HotkeysPanel';
-import { PlaylistPanel } from '../playlist/PlaylistPanel';
+import { ProjectPanel } from '../project/ProjectPanel';
 import { clipRecorder } from '../../engine/clipRecorder';
 import './TopToolbar.css';
 
 export function TopToolbar() {
   const project = useProjectStore((s) => s.project);
   const setProjectName = useProjectStore((s) => s._setProjectName);
-  const setProject = useProjectStore((s) => s._setProject);
   const canUndo = useHistoryStore((s) => s.undoStack.length > 0);
   const canRedo = useHistoryStore((s) => s.redoStack.length > 0);
   const undoLabel = useHistoryStore((s) => s.undoStack[s.undoStack.length - 1]?.label);
@@ -42,9 +38,8 @@ export function TopToolbar() {
   const toggleRecording = usePlaybackStore((s) => s.toggleRecording);
   const isClipRecording = useUiStore((s) => s.isClipRecording);
   const setClipRecording = useUiStore((s) => s.setClipRecording);
-  const isPlaylistOpen = useUiStore((s) => s.isPlaylistOpen);
-  const setPlaylistOpen = useUiStore((s) => s.setPlaylistOpen);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const isProjectPanelOpen = useUiStore((s) => s.isProjectPanelOpen);
+  const setProjectPanelOpen = useUiStore((s) => s.setProjectPanelOpen);
   // Live time readout, written straight to the DOM on every playbackStore
   // tick instead of through React state — a plain currentTime subscription
   // here re-rendered this whole toolbar (many icon buttons, undo/redo
@@ -81,46 +76,6 @@ export function TopToolbar() {
     }
   };
 
-  const handleNew = () => {
-    if (!window.confirm('Iniciar um novo projeto? As alterações não salvas do projeto atual serão perdidas.')) return;
-    setProject(createEmptyProject());
-    useHistoryStore.getState().clear();
-    usePlaybackStore.getState().stop();
-    usePlaybackStore.getState().setCurrentTime(0);
-  };
-
-  const handleSave = () => {
-    void saveProjectToLocal(project);
-  };
-
-  const handleExport = () => {
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${project.name.replace(/\s+/g, '_')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleOpen = () => fileInputRef.current?.click();
-
-  const handleFileChosen = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    const text = await file.text();
-    try {
-      const parsed = migrateProject(JSON.parse(text));
-      if (parsed) {
-        setProject(parsed);
-        useHistoryStore.getState().clear();
-      }
-    } catch {
-      window.alert('Não foi possível ler este arquivo de projeto.');
-    }
-  };
-
   return (
     <header className="top-toolbar">
       <div className="top-toolbar__group">
@@ -135,16 +90,7 @@ export function TopToolbar() {
       <div className="top-toolbar__divider" />
 
       <div className="top-toolbar__group">
-        <IconButton icon="file-plus" label="Novo" onClick={handleNew} />
-        <IconButton icon="folder-open" label="Abrir" onClick={handleOpen} />
-        <IconButton icon="save" label="Salvar" onClick={handleSave} />
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/json"
-          style={{ display: 'none' }}
-          onChange={handleFileChosen}
-        />
+        <IconButton icon="save" label="Projeto e Playlist (novo, abrir, salvar, exportar)" onClick={() => setProjectPanelOpen(true)} />
       </div>
 
       <div className="top-toolbar__divider" />
@@ -208,9 +154,7 @@ export function TopToolbar() {
       <div className="top-toolbar__divider" />
 
       <div className="top-toolbar__group">
-        <IconButton icon="playlist" label="Playlist" onClick={() => setPlaylistOpen(true)} />
         <IconButton icon="keyboard" label="Atalhos" onClick={() => setHotkeysPanelOpen(true)} />
-        <IconButton icon="download" label="Exportar" onClick={handleExport} />
         <IconButton icon="settings" label="Configurações" onClick={() => setSettingsOpen(true)} />
       </div>
 
@@ -224,9 +168,9 @@ export function TopToolbar() {
           <HotkeysPanel />
         </Modal>
       )}
-      {isPlaylistOpen && (
-        <Modal title="Playlist" onClose={() => setPlaylistOpen(false)}>
-          <PlaylistPanel />
+      {isProjectPanelOpen && (
+        <Modal title="Projeto e Playlist" onClose={() => setProjectPanelOpen(false)}>
+          <ProjectPanel />
         </Modal>
       )}
     </header>

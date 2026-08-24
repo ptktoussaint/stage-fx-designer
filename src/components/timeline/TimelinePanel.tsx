@@ -311,13 +311,31 @@ export function TimelinePanel() {
   // view), the other stays null and is skipped.
   const collapsedTimeRef = useRef<HTMLSpanElement>(null);
   const panelPlayheadRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
+    // Keeps the playhead on screen as it runs past the current scroll
+    // position, instead of scrolling off the right edge during playback —
+    // only nudges scrollLeft when the playhead would actually leave the
+    // visible window (forward past it, or behind it after a backward
+    // seek), so it never fights a manual scroll made while paused.
+    const AUTO_SCROLL_MARGIN_PX = 40;
     const update = (currentTime: number) => {
       if (collapsedTimeRef.current) {
         collapsedTimeRef.current.textContent = formatTime(Math.max(0, currentTime - audio.trimStart));
       }
+      const playheadX = TRACK_LABEL_WIDTH + currentTime * PX_PER_SECOND;
       if (panelPlayheadRef.current) {
-        panelPlayheadRef.current.style.left = `${TRACK_LABEL_WIDTH + currentTime * PX_PER_SECOND}px`;
+        panelPlayheadRef.current.style.left = `${playheadX}px`;
+      }
+      const scrollEl = scrollRef.current;
+      if (scrollEl) {
+        const viewLeft = scrollEl.scrollLeft;
+        const viewRight = viewLeft + scrollEl.clientWidth;
+        if (playheadX > viewRight - AUTO_SCROLL_MARGIN_PX) {
+          scrollEl.scrollLeft = playheadX - scrollEl.clientWidth + AUTO_SCROLL_MARGIN_PX;
+        } else if (playheadX < viewLeft + TRACK_LABEL_WIDTH + AUTO_SCROLL_MARGIN_PX) {
+          scrollEl.scrollLeft = Math.max(0, playheadX - TRACK_LABEL_WIDTH - AUTO_SCROLL_MARGIN_PX);
+        }
       }
     };
     update(usePlaybackStore.getState().currentTime);
@@ -368,6 +386,7 @@ export function TimelinePanel() {
       </div>
       <div
         className="timeline-panel__scroll"
+        ref={scrollRef}
         onClick={() => {
           if (suppressNextClickRef.current) {
             suppressNextClickRef.current = false;

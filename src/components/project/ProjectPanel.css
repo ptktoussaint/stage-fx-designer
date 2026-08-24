@@ -1,11 +1,43 @@
-.playlist-panel {
+.project-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 340px;
+  gap: 12px;
+  width: 360px;
 }
 
-.playlist-panel__save-button {
+.project-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.project-panel__section-title {
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.project-panel__hint {
+  color: var(--text-muted);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.project-panel__divider {
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.project-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-panel__primary-button {
+  flex: 1;
   background: var(--accent);
   color: #fff;
   border: none;
@@ -15,28 +47,28 @@
   font-weight: 600;
 }
 
-.playlist-panel__save-button:hover:not(:disabled) {
+.project-panel__primary-button:hover:not(:disabled) {
   filter: brightness(1.08);
 }
 
-.playlist-panel__save-button:disabled {
+.project-panel__primary-button:disabled {
   opacity: 0.6;
 }
 
-.playlist-panel__empty {
+.project-panel__empty {
   color: var(--text-muted);
   font-size: 11.5px;
 }
 
-.playlist-panel__list {
+.project-panel__list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 360px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
-.playlist-panel__row {
+.project-panel__entry-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -46,7 +78,7 @@
   border-radius: var(--radius-sm);
 }
 
-.playlist-panel__row-main {
+.project-panel__entry-main {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -59,12 +91,12 @@
   text-align: left;
 }
 
-.playlist-panel__row-main:hover:not(:disabled) {
+.project-panel__entry-main:hover:not(:disabled) {
   background: var(--bg-hover);
   border-radius: var(--radius-sm);
 }
 
-.playlist-panel__name {
+.project-panel__entry-name {
   color: var(--text-primary);
   font-size: 11.5px;
   overflow: hidden;
@@ -73,12 +105,12 @@
   max-width: 100%;
 }
 
-.playlist-panel__meta {
+.project-panel__entry-meta {
   color: var(--text-muted);
   font-size: 10px;
 }
 
-.playlist-panel__loading {
+.project-panel__loading {
   color: var(--text-muted);
   font-size: 10.5px;
   padding: 0 8px;
