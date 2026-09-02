@@ -9,7 +9,23 @@
 </head>
 <body>
 
-  <div id="login-screen" class="screen center-screen">
+  <div id="setup-screen" class="screen center-screen hidden">
+    <div class="card">
+      <p class="logo-text">💜 PROVAS LIVE</p>
+      <h2>Criar administrador</h2>
+      <p class="hint" style="margin-top:0">Nenhum administrador foi encontrado ainda — crie a primeira conta para acessar o painel. Esta tela só aparece uma vez.</p>
+      <form id="setup-form">
+        <label>Usuário</label>
+        <input id="setup-username" type="text" autocomplete="username" required />
+        <label>Senha (mínimo 8 caracteres)</label>
+        <input id="setup-password" type="password" autocomplete="new-password" minlength="8" required />
+        <button type="submit">Criar administrador</button>
+      </form>
+      <p class="error-msg" id="setup-error"></p>
+    </div>
+  </div>
+
+  <div id="login-screen" class="screen center-screen hidden">
     <div class="card">
       <p class="logo-text">💜 PROVAS LIVE</p>
       <h2>Painel Administrativo</h2>

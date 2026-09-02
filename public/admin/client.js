@@ -29,6 +29,19 @@
     return `${h}:${m}:${s}`;
   }
 
+  // ---------------- Primeiro acesso (criar admin) ----------------
+  document.getElementById('setup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('setup-username').value.trim();
+    const password = document.getElementById('setup-password').value;
+    const errorEl = document.getElementById('setup-error');
+    const data = await api('/setup-first-admin', { method: 'POST', body: JSON.stringify({ username, password }) });
+    if (!data.success) { errorEl.textContent = data.message || 'Não foi possível criar o administrador.'; return; }
+    document.getElementById('admin-username').textContent = data.username;
+    document.getElementById('setup-screen').classList.add('hidden');
+    enterApp();
+  });
+
   // ---------------- Login ----------------
   const loginForm = document.getElementById('login-form');
   loginForm.addEventListener('submit', async (e) => {
@@ -47,15 +60,24 @@
     location.reload();
   });
 
-  async function checkSession() {
+  async function boot() {
+    const setupStatus = await api('/setup-status');
+    if (setupStatus.success && setupStatus.needsSetup) {
+      document.getElementById('setup-screen').classList.remove('hidden');
+      return;
+    }
+
     const data = await api('/me');
     if (data.success) {
       document.getElementById('admin-username').textContent = data.admin.username;
       enterApp();
+    } else {
+      document.getElementById('login-screen').classList.remove('hidden');
     }
   }
 
   function enterApp() {
+    document.getElementById('setup-screen').classList.add('hidden');
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('app-screen').classList.remove('hidden');
     connectSocket();
@@ -529,5 +551,5 @@
     document.querySelector('[data-tab="rooms-tab"]').addEventListener('click', loadRooms);
   }
 
-  checkSession();
+  boot();
 })();

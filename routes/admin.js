@@ -28,6 +28,38 @@ function isValidObjectId(id) {
 
 // ===================== Autenticação =====================
 
+// Primeiro acesso: enquanto não existir NENHUM administrador cadastrado no
+// banco, o próprio site oferece um formulário para criar o primeiro —
+// evita depender de rodar scripts/seed-admin.js num terminal (requisito
+// #56: facilidade de uso). Esse caminho se fecha sozinho para sempre assim
+// que o primeiro admin é criado.
+router.get('/setup-status', async (req, res) => {
+  const count = await User.countDocuments();
+  res.json({ success: true, needsSetup: count === 0 });
+});
+
+router.post('/setup-first-admin', adminLoginLimiter, async (req, res) => {
+  const count = await User.countDocuments();
+  if (count > 0) {
+    return res.status(409).json({ success: false, message: 'Já existe um administrador configurado. Use a tela de login normal.' });
+  }
+
+  const { username, password } = req.body || {};
+  if (!username || !String(username).trim()) {
+    return res.status(400).json({ success: false, message: 'Escolha um nome de usuário.' });
+  }
+  if (!password || String(password).length < 8) {
+    return res.status(400).json({ success: false, message: 'A senha precisa ter pelo menos 8 caracteres.' });
+  }
+
+  const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
+  const user = await User.create({ username: String(username).trim(), passwordHash, role: 'admin' });
+
+  req.session.admin = { id: user._id.toString(), username: user.username };
+  await logSecurityEvent('admin_setup_first_admin', { meta: { username: user.username }, ip: req.ip });
+  res.status(201).json({ success: true, username: user.username });
+});
+
 router.post('/login', adminLoginLimiter, async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) {
