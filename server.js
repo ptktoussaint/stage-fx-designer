@@ -6,7 +6,8 @@ const { Server } = require('socket.io');
 
 const env = require('./config/env');
 const { connectDb } = require('./config/db');
-const sessionMiddleware = require('./middleware/session');
+const createSessionMiddleware = require('./middleware/session');
+const { verifySameOrigin } = require('./middleware/csrf');
 const { initSockets } = require('./sockets');
 const { startExpirySweep } = require('./lib/examLifecycle');
 
@@ -14,8 +15,22 @@ const adminRoutes = require('./routes/admin');
 const studentRoutes = require('./routes/student');
 const proctorRoutes = require('./routes/proctor');
 
+// Rede de segurança de último recurso. asyncHandler (rotas) e safeOn
+// (sockets) já cobrem o caminho normal de erros assíncronos, mas qualquer
+// coisa inesperada (driver do Mongo, um timer, etc.) que ainda assim escape
+// não pode derrubar o processo inteiro — isso tiraria do ar TODAS as salas
+// de prova em andamento por causa de um único erro isolado (requisito
+// "estabilidade" é a prioridade #1 do projeto). Logamos e seguimos vivos.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 async function main() {
   await connectDb();
+  const sessionMiddleware = createSessionMiddleware();
 
   const app = express();
   const server = http.createServer(app);
@@ -46,6 +61,13 @@ async function main() {
     crossOriginEmbedderPolicy: false,
   }));
   app.use(helmet.referrerPolicy({ policy: 'same-origin' }));
+  // display-capture=(self) permite getDisplayMedia() na própria origem (é o
+  // que a tela do aluno usa) e nega as demais permissões que não usamos —
+  // requisito #51.
+  app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(), display-capture=(self)');
+    next();
+  });
 
   app.use(express.json({ limit: '200kb' }));
   app.use(sessionMiddleware);
@@ -55,6 +77,7 @@ async function main() {
   // enviado solto pelo cliente (ver sockets/index.js).
   io.engine.use(sessionMiddleware);
 
+  app.use('/api', verifySameOrigin);
   app.use('/api/admin', adminRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/proctor', proctorRoutes);

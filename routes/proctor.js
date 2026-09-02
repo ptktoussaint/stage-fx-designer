@@ -1,17 +1,16 @@
-const express = require('express');
-
 const Room = require('../models/Room');
 const Exam = require('../models/Exam');
 const ExamAttempt = require('../models/ExamAttempt');
 
 const { requireProctorSession } = require('../middleware/auth');
 const { identifyLimiter } = require('../middleware/rateLimit');
-const { hashToken } = require('../lib/tokens');
+const { hashToken, timingSafeEqualHex } = require('../lib/tokens');
 const { buildIceServers } = require('../lib/turn');
 const { logSecurityEvent } = require('../lib/securityLog');
 const liveState = require('../lib/liveState');
+const { createSafeRouter } = require('../lib/safeRouter');
 
-const router = express.Router();
+const router = createSafeRouter();
 
 // Descobrir o roomId não concede acesso à transmissão (requisito #53) — o
 // acesso é sempre resolvido a partir do hash do token, nunca de um ID.
@@ -26,7 +25,7 @@ router.post('/identify', identifyLimiter, async (req, res) => {
     return res.status(404).json({ success: false, message: 'Link inválido, revogado ou sala encerrada.' });
   }
 
-  const tokenEntry = room.proctorTokens.find((t) => t.tokenHash === hash);
+  const tokenEntry = room.proctorTokens.find((t) => timingSafeEqualHex(t.tokenHash, hash));
   const exam = await Exam.findById(room.examId);
 
   req.session.proctor = { roomId: room._id.toString(), proctorTokenId: tokenEntry._id.toString() };
@@ -54,7 +53,7 @@ router.get('/status', async (req, res) => {
 
   let progress = null;
   if (room.currentAttemptId) {
-    const attempt = await ExamAttempt.findById(room.currentAttemptId).select('status totalQuestions expiresAt startedAt snapshot').lean();
+    const attempt = await ExamAttempt.findById(room.currentAttemptId).select('status expiresAt startedAt snapshot').lean();
     if (attempt) {
       const answeredCount = attempt.snapshot.filter((q) => q.selectedKey).length;
       progress = {
@@ -71,6 +70,7 @@ router.get('/status', async (req, res) => {
     room: { roomLabel: room.roomLabel, studentName: room.studentName },
     live: liveState.summary(roomId),
     progress,
+    serverTime: Date.now(),
   });
 });
 

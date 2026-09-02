@@ -1,4 +1,3 @@
-const express = require('express');
 const argon2 = require('argon2');
 const mongoose = require('mongoose');
 
@@ -16,9 +15,11 @@ const { adminLoginLimiter, adminApiLimiter } = require('../middleware/rateLimit'
 const { uploadImage } = require('../middleware/upload');
 const { generateToken, hashToken } = require('../lib/tokens');
 const { logSecurityEvent } = require('../lib/securityLog');
+const { OPTION_KEYS } = require('../lib/constants');
 const liveState = require('../lib/liveState');
+const { createSafeRouter } = require('../lib/safeRouter');
 
-const router = express.Router();
+const router = createSafeRouter();
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -164,13 +165,13 @@ router.get('/exams/:examId/questions', async (req, res) => {
 function validateQuestionPayload(body) {
   const { text, options, correctKey } = body || {};
   if (!text || !String(text).trim()) return 'Texto da pergunta é obrigatório.';
-  if (!Array.isArray(options) || options.length !== 4) return 'É necessário informar exatamente 4 alternativas.';
+  if (!Array.isArray(options) || options.length !== OPTION_KEYS.length) return `É necessário informar exatamente ${OPTION_KEYS.length} alternativas.`;
   const keys = options.map((o) => o.key);
-  if (new Set(keys).size !== 4 || !['A', 'B', 'C', 'D'].every((k) => keys.includes(k))) {
-    return 'As alternativas devem ter as chaves A, B, C e D.';
+  if (new Set(keys).size !== OPTION_KEYS.length || !OPTION_KEYS.every((k) => keys.includes(k))) {
+    return `As alternativas devem ter as chaves ${OPTION_KEYS.join(', ')}.`;
   }
   if (options.some((o) => !o.text || !String(o.text).trim())) return 'Todas as alternativas precisam ter texto.';
-  if (!['A', 'B', 'C', 'D'].includes(correctKey)) return 'Alternativa correta inválida.';
+  if (!OPTION_KEYS.includes(correctKey)) return 'Alternativa correta inválida.';
   return null;
 }
 

@@ -2,6 +2,7 @@ const Room = require('../models/Room');
 const ExamAttempt = require('../models/ExamAttempt');
 const liveState = require('../lib/liveState');
 const { logExamEvent } = require('../lib/eventLog');
+const { safeOn } = require('../lib/asyncHandler');
 
 const FOCUS_EVENT_TYPES = new Set(['blur', 'focus', 'hidden', 'visible']);
 const STREAM_STATUS_VALUES = new Set([
@@ -30,10 +31,13 @@ function registerAdmin(io, socket) {
 
 async function persistStreamEvent(attemptId, type, meta = null) {
   if (!attemptId) return;
-  await ExamAttempt.findByIdAndUpdate(attemptId, {
-    $push: { streamEvents: { type, at: new Date(), meta } },
-    $set: { streamStatus: type === 'interrupted' ? 'interrupted' : undefined },
-  }).catch(() => {});
+  const update = { $push: { streamEvents: { type, at: new Date(), meta } } };
+  // Só sobrescreve o status persistido quando o evento É um status de
+  // transmissão válido — nunca gravar undefined/null aqui (o driver do
+  // Mongo serializa `undefined` em `$set` como BSON null, o que apagaria o
+  // streamStatus a cada evento que não fosse "interrupted").
+  if (STREAM_STATUS_VALUES.has(type)) update.$set = { streamStatus: type };
+  await ExamAttempt.findByIdAndUpdate(attemptId, update).catch(() => {});
 }
 
 function registerStudent(io, socket, room) {
@@ -58,17 +62,17 @@ function registerStudent(io, socket, room) {
     socket.emit('viewer:joined', { viewerId, connectionId: viewerId });
   }
 
-  socket.on('webrtc:offer', ({ viewerId, sdp }) => {
+  safeOn(socket, 'webrtc:offer', ({ viewerId, sdp }) => {
     if (!liveRoom.proctors.has(viewerId)) return;
     io.to(viewerId).emit('webrtc:offer', { viewerId, connectionId: viewerId, sdp });
   });
 
-  socket.on('webrtc:ice', ({ viewerId, candidate }) => {
+  safeOn(socket, 'webrtc:ice', ({ viewerId, candidate }) => {
     if (!liveRoom.proctors.has(viewerId)) return;
     io.to(viewerId).emit('webrtc:ice', { viewerId, connectionId: viewerId, candidate });
   });
 
-  socket.on('stream:status', async ({ status }) => {
+  safeOn(socket, 'stream:status', async ({ status }) => {
     if (!STREAM_STATUS_VALUES.has(status)) return;
     liveState.patch(roomId, { streamStatus: status });
     io.to(`room:${roomId}`).emit('stream:status', { status });
@@ -80,7 +84,7 @@ function registerStudent(io, socket, room) {
     await logExamEvent({ roomId, attemptId: current.attemptId, actor: 'student', type: `stream_${status}` });
   });
 
-  socket.on('focus:event', async ({ type }) => {
+  safeOn(socket, 'focus:event', async ({ type }) => {
     if (!FOCUS_EVENT_TYPES.has(type)) return;
     const attempt = room.currentAttemptId ? await ExamAttempt.findById(room.currentAttemptId) : null;
     const isLeaving = type === 'blur' || type === 'hidden';
@@ -105,11 +109,7 @@ function registerStudent(io, socket, room) {
     await logExamEvent({ roomId, attemptId: room.currentAttemptId, actor: 'student', type: `focus_${type}` });
   });
 
-  socket.on('webrtc:request-renegotiate-ack', () => {
-    // no-op hook reservado para telemetria futura de recuperação bem-sucedida
-  });
-
-  socket.on('disconnect', async () => {
+  safeOn(socket, 'disconnect', async () => {
     const current = liveState.getRoom(roomId);
     if (current && current.studentSocketId === socket.id) {
       liveState.patch(roomId, { studentOnline: false, studentSocketId: null, streamStatus: 'interrupted' });
@@ -141,13 +141,13 @@ function registerProctor(io, socket, room, proctorTokenId) {
     io.to(liveRoom.studentSocketId).emit('viewer:joined', { viewerId, connectionId: viewerId });
   }
 
-  socket.on('webrtc:answer', ({ sdp }) => {
+  safeOn(socket, 'webrtc:answer', ({ sdp }) => {
     const current = liveState.getRoom(roomId);
     if (!current?.studentSocketId) return;
     io.to(current.studentSocketId).emit('webrtc:answer', { viewerId, connectionId: viewerId, sdp });
   });
 
-  socket.on('webrtc:ice', ({ candidate }) => {
+  safeOn(socket, 'webrtc:ice', ({ candidate }) => {
     const current = liveState.getRoom(roomId);
     if (!current?.studentSocketId) return;
     io.to(current.studentSocketId).emit('webrtc:ice', { viewerId, connectionId: viewerId, candidate });
@@ -157,7 +157,7 @@ function registerProctor(io, socket, room, proctorTokenId) {
   // O servidor aplica backoff para não gerar loop infinito de reconexão
   // (requisito #27) — depois de N tentativas na janela, para de repassar e
   // deixa o estado de erro visível para intervenção manual.
-  socket.on('webrtc:request-renegotiate', () => {
+  safeOn(socket, 'webrtc:request-renegotiate', () => {
     const current = liveState.getRoom(roomId);
     const proctorInfo = current?.proctors.get(viewerId);
     if (!current?.studentSocketId || !proctorInfo) return;
@@ -172,7 +172,7 @@ function registerProctor(io, socket, room, proctorTokenId) {
     io.to(current.studentSocketId).emit('request-renegotiate', { viewerId });
   });
 
-  socket.on('disconnect', () => {
+  safeOn(socket, 'disconnect', () => {
     liveState.removeProctor(roomId, viewerId);
     const current = liveState.getRoom(roomId);
     if (current?.studentSocketId) {
@@ -189,33 +189,38 @@ function initSockets(io) {
     io.to('admins').emit('room:update', liveState.summary(roomId));
   });
 
-  io.on('connection', async (socket) => {
-    const resolved = resolveRole(socket);
-    if (!resolved) {
-      socket.emit('auth:error', { message: 'Sessão inválida ou expirada.' });
+  io.on('connection', (socket) => {
+    Promise.resolve().then(async () => {
+      const resolved = resolveRole(socket);
+      if (!resolved) {
+        socket.emit('auth:error', { message: 'Sessão inválida ou expirada.' });
+        socket.disconnect(true);
+        return;
+      }
+
+      if (resolved.role === 'admin') {
+        registerAdmin(io, socket);
+        return;
+      }
+
+      const room = await Room.findById(resolved.roomId);
+      if (!room || room.status === 'closed') {
+        socket.emit('auth:error', { message: 'Sala não encontrada ou encerrada.' });
+        socket.disconnect(true);
+        return;
+      }
+
+      socket.join(`room:${resolved.roomId}`);
+
+      if (resolved.role === 'student') {
+        registerStudent(io, socket, room);
+      } else {
+        registerProctor(io, socket, room, resolved.proctorTokenId);
+      }
+    }).catch((err) => {
+      console.error('[socket:connection] erro não tratado:', err);
       socket.disconnect(true);
-      return;
-    }
-
-    if (resolved.role === 'admin') {
-      registerAdmin(io, socket);
-      return;
-    }
-
-    const room = await Room.findById(resolved.roomId);
-    if (!room || room.status === 'closed') {
-      socket.emit('auth:error', { message: 'Sala não encontrada ou encerrada.' });
-      socket.disconnect(true);
-      return;
-    }
-
-    socket.join(`room:${resolved.roomId}`);
-
-    if (resolved.role === 'student') {
-      registerStudent(io, socket, room);
-    } else {
-      registerProctor(io, socket, room, resolved.proctorTokenId);
-    }
+    });
   });
 }
 

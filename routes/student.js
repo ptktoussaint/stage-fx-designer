@@ -1,5 +1,3 @@
-const express = require('express');
-
 const Room = require('../models/Room');
 const Exam = require('../models/Exam');
 const ExamAttempt = require('../models/ExamAttempt');
@@ -14,8 +12,9 @@ const { logExamEvent } = require('../lib/eventLog');
 const { logSecurityEvent } = require('../lib/securityLog');
 const { buildIceServers } = require('../lib/turn');
 const liveState = require('../lib/liveState');
+const { createSafeRouter } = require('../lib/safeRouter');
 
-const router = express.Router();
+const router = createSafeRouter();
 
 // Identificação: token da sala (do link) + nome completo (requisito #7).
 // O token é a autorização de verdade; o nome é uma confirmação adicional de
@@ -80,38 +79,33 @@ router.post('/start', async (req, res) => {
     const room = await loadOwnRoom(req);
     const { attempt, resumed } = await startOrResumeAttempt(room._id);
 
-    if (isExpired(attempt) && attempt.status === 'in_progress') {
-      await finalizeAttempt(attempt, 'timeout');
+    let current = attempt;
+    if (isExpired(current) && current.status === 'in_progress') {
+      current = await finalizeAttempt(current, 'timeout');
     }
 
     liveState.patch(room._id.toString(), {
       roomLabel: room.roomLabel,
       studentName: room.studentName,
       examId: room.examId.toString(),
-      attemptId: attempt._id.toString(),
-      attemptStatus: attempt.status,
-      totalQuestions: attempt.snapshot.length,
-      expiresAt: attempt.expiresAt,
+      attemptId: current._id.toString(),
+      attemptStatus: current.status,
+      totalQuestions: current.snapshot.length,
+      expiresAt: current.expiresAt,
     });
 
-    res.json({ success: true, resumed, attempt: toStudentAttemptView(attempt), serverTime: Date.now() });
+    // Sala com tentativa já finalizada (ex.: aluno recarregou a página
+    // depois de terminar) — manda direto para a tela final, sem reabrir a
+    // interface de prova (requisito #11: nunca reexibir nota/gabarito/UI de
+    // resposta depois de finalizada).
+    if (current.status !== 'in_progress') {
+      return res.json({ success: true, finished: true });
+    }
+
+    res.json({ success: true, resumed, attempt: toStudentAttemptView(current), serverTime: Date.now() });
   } catch (err) {
     res.status(err.status || 500).json({ success: false, message: err.message });
   }
-});
-
-router.get('/attempt', async (req, res) => {
-  const room = await loadOwnRoom(req);
-  if (!room.currentAttemptId) return res.status(404).json({ success: false, message: 'Nenhuma tentativa iniciada.' });
-
-  let attempt = await ExamAttempt.findById(room.currentAttemptId);
-  if (!attempt) return res.status(404).json({ success: false, message: 'Tentativa não encontrada.' });
-
-  if (attempt.status === 'in_progress' && isExpired(attempt)) {
-    attempt = await finalizeAttempt(attempt, 'timeout');
-  }
-
-  res.json({ success: true, attempt: toStudentAttemptView(attempt), serverTime: Date.now() });
 });
 
 router.post('/answer', answerLimiter, async (req, res) => {
@@ -137,13 +131,26 @@ router.post('/answer', answerLimiter, async (req, res) => {
   const question = attempt.snapshot.find((q) => q.order === order);
   if (!question) return res.status(404).json({ success: false, message: 'Questão não encontrada nesta tentativa.' });
 
-  // Correção acontece aqui e somente aqui — nunca no frontend (requisitos #10, #44).
-  question.selectedKey = selectedKey;
-  question.isCorrect = selectedKey === question.correctKey;
-  question.answeredAt = new Date();
-  attempt.lastActivityAt = new Date();
-  attempt.markModified('snapshot');
-  await attempt.save();
+  // Correção acontece aqui e somente aqui — nunca no frontend (requisitos
+  // #10, #44). Update atômico via $ posicional em vez de save() completo:
+  // evita que dois cliques quase simultâneos leiam-modifiquem-gravem o
+  // documento inteiro e um pise no outro; e a condição status:'in_progress'
+  // garante que não gravamos resposta numa tentativa finalizada entre a
+  // leitura acima e este write (ex.: a varredura de expiração correu no meio).
+  const isCorrect = selectedKey === question.correctKey;
+  attempt = await ExamAttempt.findOneAndUpdate(
+    { _id: attempt._id, status: 'in_progress', 'snapshot.order': order },
+    {
+      $set: {
+        'snapshot.$.selectedKey': selectedKey,
+        'snapshot.$.isCorrect': isCorrect,
+        'snapshot.$.answeredAt': new Date(),
+        lastActivityAt: new Date(),
+      },
+    },
+    { new: true },
+  );
+  if (!attempt) return res.status(409).json({ success: false, message: 'Esta prova já foi finalizada.' });
 
   const answeredCount = attempt.snapshot.filter((q) => q.selectedKey).length;
   liveState.patch(room._id.toString(), { currentQuestionOrder: order });
