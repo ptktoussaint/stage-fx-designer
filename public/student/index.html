@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-section="Prova Online">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,14 +11,8 @@
 
   <div id="identify-screen" class="screen center-screen">
     <div class="card">
-      <p class="logo-text">💜 PROVAS LIVE</p>
-      <h2>Identificação</h2>
-      <p class="hint" style="margin-top:0">Confirme seu nome completo para entrar na sua sala de prova.</p>
-      <form id="identify-form">
-        <label>Nome completo</label>
-        <input id="identify-name" type="text" autocomplete="name" required />
-        <button type="submit">Continuar</button>
-      </form>
+      <p class="logo-text js-wordmark">💜 PROVAS LIVE</p>
+      <p class="hint">Carregando sua sala...</p>
       <p class="error-msg" id="identify-error"></p>
     </div>
   </div>
@@ -85,7 +79,7 @@
 
   <div id="finished-screen" class="screen center-screen hidden">
     <div class="card">
-      <p class="logo-text">💜 PROVAS LIVE</p>
+      <p class="logo-text js-wordmark">💜 PROVAS LIVE</p>
       <h2>PROVA FINALIZADA COM SUCESSO</h2>
       <p>Suas respostas foram registradas.</p>
       <p>Você já pode encerrar esta página.</p>
@@ -99,6 +93,7 @@
     </div>
   </div>
 
+  <script src="/shared/theme.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/student/webrtc-student.js"></script>
   <script src="/student/client.js"></script>

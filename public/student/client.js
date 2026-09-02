@@ -19,22 +19,20 @@
   let timerInterval = null;
   let examEnded = false;
 
-  // ---------- Passo 1: identificação ----------
-  document.getElementById('identify-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fullName = document.getElementById('identify-name').value.trim();
+  // ---------- Passo 1: identificação automática pelo link ----------
+  // O link já foi gerado pelo admin especificamente para este aluno — não
+  // pede mais confirmação de nome, entra direto ao abrir a página.
+  async function autoIdentify() {
     const errorEl = document.getElementById('identify-error');
-    errorEl.textContent = '';
-
     try {
       const res = await fetch('/api/student/identify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentToken, fullName }),
+        body: JSON.stringify({ studentToken }),
       });
       const data = await res.json();
       if (!data.success) {
-        errorEl.textContent = data.message || 'Não foi possível identificar você.';
+        errorEl.textContent = data.message || 'Não foi possível acessar esta sala.';
         return;
       }
 
@@ -53,9 +51,10 @@
       renderIntroVideo(data.exam.introVideoYoutubeId);
       showScreen('intro-screen');
     } catch (err) {
-      errorEl.textContent = 'Erro de conexão. Tente novamente.';
+      errorEl.textContent = 'Erro de conexão. Recarregue a página para tentar novamente.';
     }
-  });
+  }
+  autoIdentify();
 
   function renderIntroVideo(youtubeId) {
     const frame = document.getElementById('intro-video-frame');
@@ -292,8 +291,11 @@
   }
 
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 })();

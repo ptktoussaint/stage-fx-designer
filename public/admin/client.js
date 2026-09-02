@@ -9,10 +9,17 @@
     return { status: res.status, ...data };
   }
 
+  // Precisa escapar aspas também (não só < > &) porque este valor é usado
+  // tanto em texto quanto dentro de atributos HTML (value="..."). O truque
+  // via textContent/innerHTML não escapa aspas, o que quebrava o formulário
+  // de edição sempre que uma questão tinha " no texto.
   function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str == null ? '' : String(str);
-    return div.innerHTML;
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function fmtDate(d) {
@@ -175,23 +182,76 @@
     }).join('');
   }
 
-  // ---------------- Configurações da plataforma ----------------
+  // ---------------- Configurações da plataforma e identidade visual ----------------
+  function applyThemePreview(theme) {
+    const root = document.documentElement.style;
+    if (theme.primaryColorLight) root.setProperty('--accent-1', theme.primaryColorLight);
+    if (theme.primaryColor) root.setProperty('--accent-2', theme.primaryColor);
+    if (theme.primaryColorDark) root.setProperty('--accent-3', theme.primaryColorDark);
+    if (theme.backgroundColor) root.setProperty('--bg-0', theme.backgroundColor);
+    if (theme.cardColor) root.setProperty('--bg-card', theme.cardColor);
+    root.setProperty('--bg-image', theme.backgroundImageUrl ? `url('${theme.backgroundImageUrl}')` : 'none');
+  }
+
   async function loadSettings() {
     const data = await api('/settings');
     if (!data.success) return;
     document.getElementById('settings-platform-name').value = data.settings.platformName || '';
     document.getElementById('settings-intro-video').value = data.settings.introVideoYoutubeId || '';
+
+    const theme = data.settings.theme || {};
+    document.getElementById('theme-primary-color').value = theme.primaryColor || '#dc2626';
+    document.getElementById('theme-primary-color-dark').value = theme.primaryColorDark || '#991b1b';
+    document.getElementById('theme-primary-color-light').value = theme.primaryColorLight || '#f87171';
+    document.getElementById('theme-background-color').value = theme.backgroundColor || '#1a0505';
+    document.getElementById('theme-card-color').value = theme.cardColor || '#2a0e0e';
+    applyThemePreview(theme);
   }
 
   document.getElementById('settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    await api('/settings', {
+    const data = await api('/settings', {
       method: 'PUT',
       body: JSON.stringify({
         platformName: document.getElementById('settings-platform-name').value,
         introVideoYoutubeId: document.getElementById('settings-intro-video').value,
       }),
     });
+    if (data.success) document.querySelectorAll('.js-wordmark').forEach((el) => { el.textContent = data.settings.platformName; });
+  });
+
+  document.getElementById('theme-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const theme = {
+      primaryColor: document.getElementById('theme-primary-color').value,
+      primaryColorDark: document.getElementById('theme-primary-color-dark').value,
+      primaryColorLight: document.getElementById('theme-primary-color-light').value,
+      backgroundColor: document.getElementById('theme-background-color').value,
+      cardColor: document.getElementById('theme-card-color').value,
+    };
+    const data = await api('/settings', { method: 'PUT', body: JSON.stringify({ theme }) });
+    if (data.success) applyThemePreview(data.settings.theme);
+  });
+
+  document.getElementById('theme-reset-btn').addEventListener('click', async () => {
+    if (!confirm('Restaurar as cores para o padrão da plataforma?')) return;
+    const data = await api('/settings', { method: 'PUT', body: JSON.stringify({ resetTheme: true }) });
+    if (data.success) loadSettings();
+  });
+
+  document.getElementById('settings-background-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const file = document.getElementById('settings-background-file').files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('background', file);
+    const data = await api('/settings/background', { method: 'POST', body: formData });
+    if (data.success) applyThemePreview(data.settings.theme);
+  });
+
+  document.getElementById('remove-background-btn').addEventListener('click', async () => {
+    const data = await api('/settings/background', { method: 'DELETE' });
+    if (data.success) applyThemePreview(data.settings.theme);
   });
 
   document.getElementById('settings-logo-form').addEventListener('submit', async (e) => {
@@ -407,9 +467,18 @@
   });
 
   function flashLink(label, url) {
+    // Só mantém um aviso de link por vez — antes eles se acumulavam no
+    // topo da aba a cada sala/fiscal criado.
+    document.querySelectorAll('.flash-link-box').forEach((el) => el.remove());
+
     const box = document.createElement('div');
-    box.className = 'panel-section';
-    box.innerHTML = `<strong>${escapeHtml(label)}</strong><div class="link-box"><input readonly value="${escapeHtml(url)}" /><button class="small-btn" data-copy>Copiar</button><button class="small-btn secondary-btn" data-dismiss>Fechar</button></div>`;
+    box.className = 'panel-section flash-link-box';
+    box.innerHTML = `
+      <div class="panel-section-header">
+        <strong>${escapeHtml(label)}</strong>
+        <button class="small-btn secondary-btn" data-dismiss style="margin:0">✕</button>
+      </div>
+      <div class="link-box"><input readonly value="${escapeHtml(url)}" /><button class="small-btn" data-copy>Copiar</button></div>`;
     box.querySelector('[data-copy]').addEventListener('click', () => navigator.clipboard.writeText(url));
     box.querySelector('[data-dismiss]').addEventListener('click', () => box.remove());
     document.getElementById('rooms-tab').prepend(box);
@@ -427,22 +496,27 @@
     const el = document.getElementById('rooms-list');
     if (roomsCache.length === 0) { el.innerHTML = '<p class="list-empty">Nenhuma sala criada.</p>'; return; }
 
-    el.innerHTML = roomsCache.map((r) => `
+    el.innerHTML = roomsCache.map((r) => {
+      // Tokens revogados somem da lista — é exatamente isso que "excluir"
+      // significa aqui (o servidor mantém o registro só para auditoria).
+      const activeTokens = r.proctorTokens.filter((t) => !t.revokedAt);
+      return `
       <div class="item-row room-item" data-room-id="${r._id}">
         <div class="room-item-header">
           <strong>${escapeHtml(r.roomLabel)} — ${escapeHtml(r.studentName)}</strong>
           <span class="badge badge-neutral"><span class="badge-dot"></span>${r.status}</span>
         </div>
-        <div class="room-item-meta">${escapeHtml(r.examId && r.examId.name ? r.examId.name : '')} · ${r.proctorTokens.filter((t) => !t.revokedAt).length} fiscal(is) ativo(s)</div>
+        <div class="room-item-meta">${escapeHtml(r.examId && r.examId.name ? r.examId.name : '')} · ${activeTokens.length} fiscal(is) ativo(s)</div>
         <div class="room-item-actions">
           <button class="small-btn secondary-btn" data-add-proctor="${r._id}">+ Link do fiscal</button>
-          <button class="small-btn danger-btn" data-close-room="${r._id}">Encerrar sala</button>
+          ${r.status !== 'closed' ? `<button class="small-btn danger-btn" data-close-room="${r._id}">Encerrar sala</button>` : ''}
+          <button class="small-btn danger-btn" data-delete-room="${r._id}" title="Excluir sala e histórico">✕ Excluir sala</button>
         </div>
         <div class="room-item-actions" data-proctor-list>
-          ${r.proctorTokens.map((t) => `<span class="badge ${t.revokedAt ? 'badge-neutral' : 'badge-ok'}"><span class="badge-dot"></span>${escapeHtml(t.label)}${t.revokedAt ? ' (revogado)' : ''}</span>${t.revokedAt ? '' : `<button class="small-btn secondary-btn" data-revoke-token="${r._id}:${t._id}">Revogar</button>`}`).join('')}
+          ${activeTokens.map((t) => `<span class="badge badge-ok"><span class="badge-dot"></span>${escapeHtml(t.label)}</span><button class="small-btn secondary-btn" data-revoke-token="${r._id}:${t._id}" title="Excluir este link">✕</button>`).join('')}
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
 
     el.querySelectorAll('[data-add-proctor]').forEach((btn) => btn.addEventListener('click', async () => {
       const label = prompt('Rótulo do fiscal (ex.: Professor João):', 'Fiscal');
@@ -455,6 +529,12 @@
     el.querySelectorAll('[data-close-room]').forEach((btn) => btn.addEventListener('click', async () => {
       if (!confirm('Encerrar esta sala? O aluno e os fiscais serão desconectados.')) return;
       await api(`/rooms/${btn.dataset.closeRoom}/close`, { method: 'POST' });
+      loadRooms();
+    }));
+    el.querySelectorAll('[data-delete-room]').forEach((btn) => btn.addEventListener('click', async () => {
+      if (!confirm('Excluir esta sala? Isso apaga também o histórico da tentativa e a auditoria dela. Essa ação não pode ser desfeita.')) return;
+      const data = await api(`/rooms/${btn.dataset.deleteRoom}`, { method: 'DELETE' });
+      if (!data.success) { alert(data.message || 'Erro ao excluir.'); return; }
       loadRooms();
     }));
     el.querySelectorAll('[data-revoke-token]').forEach((btn) => btn.addEventListener('click', async () => {

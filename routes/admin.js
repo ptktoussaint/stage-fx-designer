@@ -15,7 +15,7 @@ const { adminLoginLimiter, adminApiLimiter } = require('../middleware/rateLimit'
 const { uploadImage } = require('../middleware/upload');
 const { generateToken, hashToken } = require('../lib/tokens');
 const { logSecurityEvent } = require('../lib/securityLog');
-const { OPTION_KEYS } = require('../lib/constants');
+const { OPTION_KEYS, DEFAULT_THEME } = require('../lib/constants');
 const { parseQuestionsCsv, EXPECTED_COLUMNS } = require('../lib/csvImport');
 const liveState = require('../lib/liveState');
 const { createSafeRouter } = require('../lib/safeRouter');
@@ -103,11 +103,28 @@ router.get('/settings', async (req, res) => {
   res.json({ success: true, settings });
 });
 
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{3,8}$/;
+const THEME_COLOR_FIELDS = ['primaryColorLight', 'primaryColor', 'primaryColorDark', 'backgroundColor', 'cardColor'];
+
 router.put('/settings', async (req, res) => {
-  const { platformName, introVideoYoutubeId } = req.body || {};
+  const { platformName, introVideoYoutubeId, theme, resetTheme } = req.body || {};
   const settings = await Settings.getOrCreate();
-  if (typeof platformName === 'string') settings.platformName = platformName.trim();
+  if (typeof platformName === 'string' && platformName.trim()) settings.platformName = platformName.trim();
   if (typeof introVideoYoutubeId === 'string') settings.introVideoYoutubeId = introVideoYoutubeId.trim() || null;
+
+  if (resetTheme) {
+    settings.theme = { ...DEFAULT_THEME, backgroundImageUrl: settings.theme.backgroundImageUrl };
+  } else if (theme && typeof theme === 'object') {
+    for (const field of THEME_COLOR_FIELDS) {
+      if (typeof theme[field] === 'string') {
+        if (!HEX_COLOR_RE.test(theme[field])) {
+          return res.status(400).json({ success: false, message: `Cor inválida em "${field}" — use um valor hexadecimal (#rrggbb).` });
+        }
+        settings.theme[field] = theme[field];
+      }
+    }
+  }
+
   await settings.save();
   res.json({ success: true, settings });
 });
@@ -116,6 +133,21 @@ router.post('/settings/logo', uploadImage.single('logo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'Nenhuma imagem enviada.' });
   const settings = await Settings.getOrCreate();
   settings.logoUrl = `/uploads/${req.file.filename}`;
+  await settings.save();
+  res.json({ success: true, settings });
+});
+
+router.post('/settings/background', uploadImage.single('background'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: 'Nenhuma imagem enviada.' });
+  const settings = await Settings.getOrCreate();
+  settings.theme.backgroundImageUrl = `/uploads/${req.file.filename}`;
+  await settings.save();
+  res.json({ success: true, settings });
+});
+
+router.delete('/settings/background', async (req, res) => {
+  const settings = await Settings.getOrCreate();
+  settings.theme.backgroundImageUrl = null;
   await settings.save();
   res.json({ success: true, settings });
 });
@@ -393,6 +425,27 @@ router.post('/rooms/:roomId/close', async (req, res) => {
   req.app.get('io').to(`room:${roomId}`).emit('room:closed');
   liveState.removeRoom(roomId);
   await logSecurityEvent('room_closed_by_admin', { meta: { roomId }, ip: req.ip });
+  res.json({ success: true });
+});
+
+// Exclusão definitiva — some da lista junto com o histórico daquela sala
+// (tentativa e eventos de auditoria). Só permitida com a sala já encerrada
+// (nunca com um aluno em prova) para não apagar dados de algo em andamento.
+router.delete('/rooms/:roomId', async (req, res) => {
+  const { roomId } = req.params;
+  if (!isValidObjectId(roomId)) return res.status(400).json({ success: false, message: 'ID inválido.' });
+  const room = await Room.findById(roomId);
+  if (!room) return res.status(404).json({ success: false, message: 'Sala não encontrada.' });
+
+  if (room.status === 'active') {
+    return res.status(409).json({ success: false, message: 'Encerre a sala antes de excluí-la.' });
+  }
+
+  await ExamAttempt.deleteMany({ roomId });
+  await ExamEvent.deleteMany({ roomId });
+  await Room.findByIdAndDelete(roomId);
+  liveState.removeRoom(roomId);
+  await logSecurityEvent('room_deleted_by_admin', { meta: { roomId }, ip: req.ip });
   res.json({ success: true });
 });
 

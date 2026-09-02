@@ -16,25 +16,20 @@ const { createSafeRouter } = require('../lib/safeRouter');
 
 const router = createSafeRouter();
 
-// Identificação: token da sala (do link) + nome completo (requisito #7).
-// O token é a autorização de verdade; o nome é uma confirmação adicional de
-// que quem está entrando é a pessoa correta para aquela sala.
+// Identificação: só o token da sala (do link) — requisito do usuário: o
+// link já identifica o aluno de forma inequívoca (foi gerado pelo admin
+// especificamente para ele), então não pede mais confirmação de nome antes
+// de entrar.
 router.post('/identify', identifyLimiter, async (req, res) => {
-  const { studentToken, fullName } = req.body || {};
-  if (!studentToken || !fullName || !String(fullName).trim()) {
-    return res.status(400).json({ success: false, message: 'Informe seu nome completo.' });
+  const { studentToken } = req.body || {};
+  if (!studentToken) {
+    return res.status(400).json({ success: false, message: 'Link inválido.' });
   }
 
   const room = await Room.findOne({ studentTokenHash: hashToken(String(studentToken)) });
   if (!room || room.status === 'closed') {
     await logSecurityEvent('student_identify_invalid_token', { ip: req.ip });
     return res.status(404).json({ success: false, message: 'Link inválido ou sala encerrada.' });
-  }
-
-  const normalizedInput = String(fullName).trim().toLowerCase();
-  const normalizedStored = room.studentName.trim().toLowerCase();
-  if (normalizedInput !== normalizedStored) {
-    return res.status(403).json({ success: false, message: 'Nome não confere com o cadastro desta sala.' });
   }
 
   const exam = await Exam.findById(room.examId);

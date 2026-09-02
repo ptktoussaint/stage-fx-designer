@@ -1,5 +1,9 @@
 .tab-panel.hidden { display: none; }
 
+.field-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+.field-group label { margin: 0; font-size: 12px; color: var(--text-muted); }
+.field-group input, .field-group select { margin: 0; width: 100%; }
+
 .room-item { flex-direction: column; align-items: stretch; }
 .room-item-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .room-item-meta { color: var(--text-muted); font-size: 12px; }

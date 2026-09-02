@@ -1,26 +1,30 @@
-/* Identidade visual reaproveitada do UPS FLUXO LIVE — mesma paleta
-   roxo/magenta escuro, cards, tipografia e componentes, para que este
-   sistema pareça uma evolução direta daquele. */
+/* Identidade visual — estrutura/componentes reaproveitados do UPS FLUXO
+   LIVE, mas as cores e a imagem de fundo abaixo são só o PADRÃO inicial:
+   tudo aqui vira variável de CSS de propósito, porque o admin edita nome,
+   cores e imagem de fundo no painel (Identidade Visual) e
+   public/shared/theme.js sobrescreve estas variáveis em tempo de execução
+   (ver lib/constants.js DEFAULT_THEME para os mesmos valores no backend). */
 :root {
-  --bg-0: #0a0412;
-  --bg-1: #150a20;
-  --bg-card: #1a0f26;
-  --bg-input: #241830;
-  --bg-item: #221430;
-  --border: #4a2a6d;
-  --border-soft: #3a2050;
+  --bg-0: #1a0505;
+  --bg-1: #200808;
+  --bg-card: #2a0e0e;
+  --bg-input: #3a1212;
+  --bg-item: #351010;
+  --border: #6d2a2a;
+  --border-soft: #502020;
   --text: #f0f0f0;
   --text-muted: #b0b0bb;
-  --text-soft: #8a7599;
-  --text-lilac: #d9c5ea;
-  --accent-1: #e879f9;
-  --accent-2: #a855f7;
-  --accent-3: #7c3aed;
+  --text-soft: #a08a8a;
+  --text-lilac: #eac5c5;
+  --accent-1: #f87171;
+  --accent-2: #dc2626;
+  --accent-3: #991b1b;
   --danger: #f87171;
   --danger-bg: #3a1424;
   --danger-border: #6d2a3f;
   --warning: #fbbf24;
   --success: #34d399;
+  --bg-image: none;
   --radius-lg: 16px;
   --radius-md: 10px;
   --radius-sm: 8px;
@@ -31,7 +35,12 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  background: linear-gradient(180deg, rgba(10, 4, 18, 0.92), rgba(10, 4, 18, 0.97)), url('/shared/logo-bg.png') center center / cover no-repeat fixed;
+  background-color: var(--bg-0);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.55)), var(--bg-image);
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
 }

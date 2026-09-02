@@ -14,6 +14,7 @@ const { startExpirySweep } = require('./lib/examLifecycle');
 const adminRoutes = require('./routes/admin');
 const studentRoutes = require('./routes/student');
 const proctorRoutes = require('./routes/proctor');
+const themeRoutes = require('./routes/theme');
 
 // Rede de segurança de último recurso. asyncHandler (rotas) e safeOn
 // (sockets) já cobrem o caminho normal de erros assíncronos, mas qualquer
@@ -78,6 +79,7 @@ async function main() {
   io.engine.use(sessionMiddleware);
 
   app.use('/api', verifySameOrigin);
+  app.use('/api/theme', themeRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/student', studentRoutes);
   app.use('/api/proctor', proctorRoutes);
