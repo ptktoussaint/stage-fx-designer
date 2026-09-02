@@ -296,6 +296,31 @@
     bindQuestionForm(list.firstElementChild, null);
   });
 
+  document.getElementById('import-csv-btn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('import-csv-status');
+    const fileInput = document.getElementById('import-csv-file');
+    const file = fileInput.files[0];
+    if (!selectedExamId) { statusEl.textContent = 'Selecione uma prova antes de importar.'; return; }
+    if (!file) { statusEl.textContent = 'Escolha um arquivo CSV primeiro.'; return; }
+
+    statusEl.textContent = 'Importando...';
+    const csvText = await file.text();
+    const data = await api(`/exams/${selectedExamId}/questions/import`, { method: 'POST', body: JSON.stringify({ csvText }) });
+
+    if (!data.success) {
+      statusEl.textContent = data.message || 'Erro ao importar.';
+      return;
+    }
+
+    const errorCount = (data.errors || []).length;
+    statusEl.textContent = errorCount > 0
+      ? `${data.imported} questão(ões) importada(s). ${errorCount} linha(s) com problema: ${data.errors.map((e) => `linha ${e.row} (${e.reason})`).join('; ')}`
+      : `${data.imported} questão(ões) importada(s) com sucesso.`;
+
+    fileInput.value = '';
+    loadQuestions();
+  });
+
   function renderQuestions() {
     const el = document.getElementById('questions-list');
     if (questionsCache.length === 0) { el.innerHTML = '<p class="list-empty">Nenhuma questão cadastrada nesta prova.</p>'; return; }

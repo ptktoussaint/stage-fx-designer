@@ -16,6 +16,7 @@ const { uploadImage } = require('../middleware/upload');
 const { generateToken, hashToken } = require('../lib/tokens');
 const { logSecurityEvent } = require('../lib/securityLog');
 const { OPTION_KEYS } = require('../lib/constants');
+const { parseQuestionsCsv, EXPECTED_COLUMNS } = require('../lib/csvImport');
 const liveState = require('../lib/liveState');
 const { createSafeRouter } = require('../lib/safeRouter');
 
@@ -192,6 +193,39 @@ router.post('/exams/:examId/questions', async (req, res) => {
     correctKey,
   });
   res.status(201).json({ success: true, question });
+});
+
+// Modelo de CSV para o admin baixar e preencher (ou usar para conferir o
+// que exportou do Google Forms/Sheets) — requisito #4.
+router.get('/questions/import-template', (req, res) => {
+  const header = EXPECTED_COLUMNS.join(',');
+  const example = 'Qual é a capital do Brasil?,Rio de Janeiro,Brasília,São Paulo,Salvador,B';
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="modelo-questoes.csv"');
+  res.send(`${header}\n${example}\n`);
+});
+
+router.post('/exams/:examId/questions/import', async (req, res) => {
+  const { examId } = req.params;
+  if (!isValidObjectId(examId)) return res.status(400).json({ success: false, message: 'ID inválido.' });
+  const exam = await Exam.findById(examId);
+  if (!exam) return res.status(404).json({ success: false, message: 'Prova não encontrada.' });
+
+  const { csvText } = req.body || {};
+  if (!csvText || typeof csvText !== 'string' || !csvText.trim()) {
+    return res.status(400).json({ success: false, message: 'Envie o conteúdo do arquivo CSV.' });
+  }
+
+  const { questions, errors } = parseQuestionsCsv(csvText);
+  if (questions.length === 0) {
+    return res.status(400).json({ success: false, message: 'Nenhuma questão válida encontrada no arquivo.', errors });
+  }
+
+  const docs = questions.map((q) => ({ examId, text: q.text, options: q.options, correctKey: q.correctKey }));
+  const inserted = await Question.insertMany(docs, { ordered: false });
+
+  await logSecurityEvent('questions_imported', { meta: { examId, count: inserted.length, errorCount: errors.length }, ip: req.ip });
+  res.status(201).json({ success: true, imported: inserted.length, errors });
 });
 
 router.put('/questions/:questionId', async (req, res) => {

@@ -84,6 +84,12 @@
             <h3>Banco de questões — <span id="questions-exam-name"></span></h3>
             <button class="ghost-btn small-btn" id="new-question-btn">+ Nova questão</button>
           </div>
+          <div class="inline-form" style="margin-bottom:14px;align-items:center">
+            <a class="secondary-btn small-btn" id="download-template-link" href="/api/admin/questions/import-template" style="text-decoration:none;display:inline-block">⬇ Baixar modelo CSV</a>
+            <input type="file" id="import-csv-file" accept=".csv,text/csv" />
+            <button class="small-btn" id="import-csv-btn">Importar CSV</button>
+          </div>
+          <p class="hint" id="import-csv-status" style="margin-top:0"></p>
           <div id="questions-list" class="list-plain"></div>
         </div>
       </div>
